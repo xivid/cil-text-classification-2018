@@ -15,7 +15,6 @@ Goal:  Given a tweet -> decide whether it is positive or negative
       word embedding algorithm / tweet embedding algorithm
 
 - Classifier  (e.g. random forest, ensemble model, CNN, RNN, LSTM ): using deep neural network is popular in recent years 
-      ( Yang, Du)
 
 ### Recent Literature
 1. [Tweet Sentiment Classification](http://nbviewer.jupyter.org/github/dsar/Twitter_Sentiment_Analysis/blob/master/report/report.pdf)    ( a survey )

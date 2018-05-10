@@ -37,4 +37,4 @@ Goal:  Given a tweet -> decide whether it is positive or negative
 
 - Articles
 Introduction to Sentiment Analysis
-https://nlp.stanford.edu/sentiment/  (Standford NLP Sentiment Analysis)
+> https://nlp.stanford.edu/sentiment/  (Standford NLP Sentiment Analysis)

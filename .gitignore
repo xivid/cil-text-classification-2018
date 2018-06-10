@@ -1,0 +1,4 @@
+data/*
+!data/get_dataset.sh
+.DS_Store
+

@@ -92,6 +92,8 @@ class NaiveBayes(BaseModel):
         print("Trained model: " + str(self.model))
 
     def predict(self, test_src):
+        if self.model is None:
+            raise RuntimeError("No trained model! (saving model not implemented yet)")
         print("loading test data...")
 
         # read lines

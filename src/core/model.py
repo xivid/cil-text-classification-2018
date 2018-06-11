@@ -11,3 +11,4 @@ class BaseModel(object):
             f.write("Id,Prediction\n")
             for idx, val in enumerate(predictions):
                 f.write("%d,%d\n" % (idx + 1, val))
+        print("Submission file saved: " + output_src)

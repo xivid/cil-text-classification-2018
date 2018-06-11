@@ -1,4 +1,18 @@
+# Datasets
 data/*
 !data/get_dataset.sh
-.DS_Store
 
+# Outputs
+output
+
+# Virtualenv
+venv
+
+# Python caches
+__pycache__
+
+# Intellj IDEA files
+.idea
+
+# Macos files
+.DS_Store

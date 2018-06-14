@@ -11,8 +11,9 @@ venv
 # Python caches
 __pycache__
 
-# Intellj IDEA files
+# IDE IDEA files
 .idea
+.vscode
 
 # Macos files
 .DS_Store

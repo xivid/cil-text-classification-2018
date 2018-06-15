@@ -1,7 +1,7 @@
 from core import BaseModel
 import numpy as np
 from scipy.sparse import csr_matrix
-from sklearn.naive_bayes import BernoulliNB
+from sklearn.naive_bayes import MultinomialNB
 
 
 class NaiveBayes(BaseModel):
@@ -24,7 +24,7 @@ class NaiveBayes(BaseModel):
         self.model = None
 
     def load_training_data(self, pos_src, neg_src):
-        print("loading positive samples...")
+        print("Loading positive samples...")
 
         # read lines
         f = open(pos_src, "r")
@@ -48,13 +48,13 @@ class NaiveBayes(BaseModel):
                 data.append(1)
             indptr.append(len(indices))
             cnt += 1
-            if cnt % 100 == 0:
+            if cnt % 10000 == 0:
                 print("%d/%d loaded" % (cnt, n_lines))
 
         f.close()
         del lines
 
-        print("loading negative samples...")
+        print("Loading negative samples...")
 
         # read lines
         f = open(neg_src, "r")
@@ -75,7 +75,7 @@ class NaiveBayes(BaseModel):
                 data.append(1)
             indptr.append(len(indices))
             cnt += 1
-            if cnt % 100 == 0:
+            if cnt % 10000 == 0:
                 print("%d/%d loaded" % (cnt, n_lines))
         print("%d loaded" % n_lines)
 
@@ -86,7 +86,7 @@ class NaiveBayes(BaseModel):
 
     def train(self, pos_src, neg_src):
         self.load_training_data(pos_src, neg_src)
-        clf = BernoulliNB()
+        clf = MultinomialNB()
         clf.fit(self.X, self.Y)
         self.model = clf
         print("Trained model: " + str(self.model))
@@ -94,7 +94,7 @@ class NaiveBayes(BaseModel):
     def predict(self, test_src):
         if self.model is None:
             raise RuntimeError("No trained model! (saving model not implemented yet)")
-        print("loading test data...")
+        print("Loading test data...")
 
         # read lines
         f = open(test_src, "r")
@@ -119,7 +119,7 @@ class NaiveBayes(BaseModel):
                     data.append(1)
             indptr.append(len(indices))
             cnt += 1
-            if cnt % 100 == 0:
+            if cnt % 1000 == 0:
                 print("%d/%d loaded" % (cnt, n_lines))
 
         # build sparse matrix

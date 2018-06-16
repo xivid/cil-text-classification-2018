@@ -3,8 +3,8 @@ import sys
 import models
 import datetime
 
-pos_default = "../data/twitter-datasets/train_pos_full.txt"
-neg_default = "../data/twitter-datasets/train_neg_full.txt"
+pos_default = "../data/twitter-datasets/train_pos.txt"
+neg_default = "../data/twitter-datasets/train_neg.txt"
 test_default = "../data/twitter-datasets/test_data.txt"
 
 if __name__ == "__main__":

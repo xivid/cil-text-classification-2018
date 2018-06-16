@@ -1,36 +1,42 @@
 from core import BaseModel
 import numpy as np
-import pickle
-from scipy.sparse import csr_matrix
 from sklearn.svm import SVC
+from sklearn.multiclass import OneVsRestClassifier
 
-class Svm(BaseModel):
+
+class SVM(BaseModel):
     def __init__(self):
         BaseModel.__init__(self)
-        self.vocabulary = dict()
+
+        """ Word embedding
+        """
+        self.word_embedding = None
+
         """ X
             GloVe average vector
         """
         self.X = None
+
         """ Y
             Class labels. 1 for positive, -1 for negative.
         """
         self.Y = None
+
         """ model
             Trained model.
         """
         self.model = None
-        
+
     def mean_vector(self, pos_src, neg_src):
         data = np.load('embeddings.npz') 
         we = data['we']
         print(we)
 
-        word_embedding = {}
+        self.word_embedding = {}
         #load we and assign vector to each word
         with open('vocab_cut.txt') as f:
             for idx, line in enumerate(f):
-                word_embedding[line.rstrip()] = we[idx]
+                self.word_embedding[line.rstrip()] = we[idx]
         #print(word_embedding)
 
         avg = []
@@ -48,7 +54,7 @@ class Svm(BaseModel):
                     num_tokens = 0;
                     for t in tokens:
                         try:
-                            avg[counter] += word_embedding[t]
+                            avg[counter] += self.word_embedding[t]
                             num_tokens += 1;
                         except:
                             continue;
@@ -103,7 +109,7 @@ class Svm(BaseModel):
     def train(self, pos_src, neg_src):
         self.load_training_data(pos_src, neg_src)
         print("train")
-        clf = SVC()
+        clf = OneVsRestClassifier(SVC(kernel='linear', probability=True, class_weight='balanced'), n_jobs=4)
         print("svm create")
       
         clf.fit(self.X, self.Y) 
@@ -120,6 +126,7 @@ class Svm(BaseModel):
         print("loading test data...")
         avg = []
         with open(test_src) as f:
+            counter = 0
             for line in f:
                 tokens = line.split();
                 avg.append(np.zeros(20))
@@ -128,7 +135,7 @@ class Svm(BaseModel):
                 for t in tokens:
                     if((len(t) != 1) or (t == "a") or (t == "i")):
                         try:
-                            avg[counter] += word_embedding[t]
+                            avg[counter] += self.word_embedding[t]
                             num_tokens += 1;
                         except:
                             continue;

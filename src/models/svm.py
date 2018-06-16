@@ -119,6 +119,7 @@ class Svm(BaseModel):
             raise RuntimeError("No trained model! (saving model not implemented yet)")
         print("loading test data...")
         avg = []
+        counter = 0
         with open(test_src) as f:
             for line in f:
                 tokens = line.split();

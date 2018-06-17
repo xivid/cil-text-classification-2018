@@ -19,22 +19,24 @@ def main():
     
     avg = []
     counter = 0
-    for fn in ['train_pos.txt', 'train_neg.txt']:
+    for fn in ['../../data/train_pos.txt', '../../data/train_neg.txt']:
         with open(fn) as f:
             for line in f:
-                tokens = line.split();
+                tokens = line.split()
                 avg.append(np.zeros(20))
 
-                num_tokens = 0;
+                num_tokens = 0
                 for t in tokens:
                     if((len(t) != 1) or (t == "a") or (t == "i")):
                         try:
                             avg[counter] += word_embedding[t]
-                            num_tokens += 1;
+                            num_tokens += 1
                         except:
-                            continue;
-                avg[counter] /= num_tokens;
+                            continue
+                avg[counter] /= num_tokens
                 counter += 1
                     
 if __name__ == '__main__':
     main()
+
+def 

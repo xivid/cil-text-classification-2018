@@ -1,6 +1,6 @@
 import os
+import pathlib
 
 
 def ensure_dir(path):
-    if not os.path.exists(path):
-        os.makedirs(path)
+    pathlib.Path(path).mkdir(parents=True, exist_ok=True)

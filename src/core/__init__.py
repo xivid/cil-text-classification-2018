@@ -1,3 +1,4 @@
 from .model import BaseModel
+from .datasource import BaseDataSource
 
-__all__ = ("BaseModel", )
+__all__ = ("BaseModel", "BaseDataSource")

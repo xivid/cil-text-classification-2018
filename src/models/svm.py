@@ -2,8 +2,11 @@ from core import BaseModel
 import numpy as np
 from sklearn.svm import SVC
 from sklearn.multiclass import OneVsRestClassifier
+from sklearn.ensemble import BaggingClassifier
+from datasources import Glove
 
 
+# TODO: rewrite this class to use preprocess() and yield_one_sample() of class Glove, don't do data preprocessing here
 class SVM(BaseModel):
     def __init__(self):
         BaseModel.__init__(self)
@@ -109,7 +112,10 @@ class SVM(BaseModel):
     def train(self, pos_src, neg_src):
         self.load_training_data(pos_src, neg_src)
         print("train")
-        clf = OneVsRestClassifier(SVC(kernel='linear', probability=True, class_weight='balanced'), n_jobs=4)
+        n_estimators = 10
+        clf = OneVsRestClassifier(BaggingClassifier(SVC(kernel='linear', probability=True, class_weight='balanced'),
+                                                    max_samples=1.0 / n_estimators, n_estimators=n_estimators), n_jobs=-1)
+
         print("svm create")
       
         clf.fit(self.X, self.Y) 
@@ -117,7 +123,7 @@ class SVM(BaseModel):
 
         print("svm fit")
        
-
+        self.model = clf
         print("Trained model: " + str(self.model))
 
     def predict(self, test_src):

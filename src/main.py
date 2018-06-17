@@ -27,4 +27,4 @@ if __name__ == "__main__":
         model.train(pos_src, neg_src)
         print("Evaluating for kaggle submission on test set " + test_src)
         model.evaluate_for_kaggle(test_src,
-                                  "../output/kaggle_%s.csv" % datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
+                                  "../output/models/%s/kaggle_%s.csv" % (sys.argv[1], datetime.datetime.now().strftime("%Y%m%d%H%M%S")))

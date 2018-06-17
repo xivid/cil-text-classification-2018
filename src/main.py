@@ -3,6 +3,7 @@ import os
 import sys
 import models
 import datetime
+import utils
 
 pos_default = "../data/twitter-datasets/train_pos.txt"
 neg_default = "../data/twitter-datasets/train_neg.txt"
@@ -30,5 +31,6 @@ if __name__ == "__main__":
         model = models.getModel(sys.argv[1])()
         model.train(pos_src, neg_src)
         print("Evaluating for kaggle submission on test set " + test_src)
+        utils.ensure_dir("../output/models/%s" % sys.argv[1])
         model.evaluate_for_kaggle(test_src,
                                   "../output/models/%s/kaggle_%s.csv" % (sys.argv[1], datetime.datetime.now().strftime("%Y%m%d%H%M%S")))

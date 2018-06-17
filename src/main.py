@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import os
 import sys
 import models
 import datetime
@@ -8,6 +9,9 @@ neg_default = "../data/twitter-datasets/train_neg.txt"
 test_default = "../data/twitter-datasets/test_data.txt"
 
 if __name__ == "__main__":
+    if not os.getcwd().endswith("/src"):
+        os.chdir("src")
+
     argc = len(sys.argv)
 
     # print usage

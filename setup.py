@@ -13,7 +13,7 @@ setup(
         packages=find_packages(exclude=[]),
         python_requires='>=3.5',
         install_requires=[
-            # 'coloredlogs',
+            'coloredlogs',
             'numpy',
             'scipy',
             'sklearn',

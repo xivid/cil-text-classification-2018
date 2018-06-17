@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from core import BaseDataSource
+# from core import BaseDataSource
 from scipy.sparse import *
 import numpy as np
 import pickle
@@ -13,7 +13,8 @@ in preprocess() (and output the intermediate results to ../../output/datasources
 and yield (the feature vector and the corresponding class label) of one sample on each call to yield_one_sample(). 
 """
 
-class Glove(BaseDataSource):
+# class Glove(BaseDataSource):
+class Glove:
     def main(self):
         print("loading cooccurrence matrix")
         with open('cooc.pkl', 'rb') as f:

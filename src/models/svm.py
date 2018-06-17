@@ -51,16 +51,16 @@ class SVM(BaseModel):
                 n_lines = 0
                 for line in f:
                     n_lines += 1
-                    tokens = line.split();
+                    tokens = line.split()
                     avg.append(np.zeros(20))
 
-                    num_tokens = 0;
+                    num_tokens = 0
                     for t in tokens:
                         try:
                             avg[counter] += self.word_embedding[t]
-                            num_tokens += 1;
+                            num_tokens += 1
                         except:
-                            continue;
+                            continue
                     if (num_tokens != 0):
                         np.true_divide(avg[counter], num_tokens)
                     counter += 1
@@ -113,8 +113,9 @@ class SVM(BaseModel):
         self.load_training_data(pos_src, neg_src)
         print("train")
         n_estimators = 10
-        clf = OneVsRestClassifier(BaggingClassifier(SVC(kernel='linear', probability=True, class_weight='balanced'),
-                                                    max_samples=1.0 / n_estimators, n_estimators=n_estimators), n_jobs=-1)
+        clf = SVC(C=1e3, kernel='rbf', class_weight='balanced')
+        # clf = OneVsRestClassifier(BaggingClassifier(SVC(kernel='linear', probability=True, class_weight='balanced'),
+        #                                            max_samples=1.0 / n_estimators, n_estimators=n_estimators), n_jobs=-1)
 
         print("svm create")
       
@@ -134,17 +135,17 @@ class SVM(BaseModel):
         with open(test_src) as f:
             counter = 0
             for line in f:
-                tokens = line.split();
+                tokens = line.split()
                 avg.append(np.zeros(20))
 
-                num_tokens = 0;
+                num_tokens = 0
                 for t in tokens:
                     if((len(t) != 1) or (t == "a") or (t == "i")):
                         try:
                             avg[counter] += self.word_embedding[t]
-                            num_tokens += 1;
+                            num_tokens += 1
                         except:
-                            continue;
+                            continue
                 np.divide(avg[counter], num_tokens)
                 counter += 1
 

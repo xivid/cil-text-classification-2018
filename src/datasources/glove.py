@@ -46,7 +46,12 @@ class Glove:
                 ys[jy, :] += scale * x
 
         we = xs + ys
-        np.savez('embeddings', we=we)
+        with open("glove_word_embedding.txt", "w") as f, open("vocab_cut.txt", "r") as g:
+            f.write(str(cooc.shape[0]) + " " + str(embedding_dim) + "\n")
+            for i, word in enumerate(g):
+                coords = ' '.join([str(b) for b in we[i].tolist()])
+                f.write(word.strip() + " " + coords + "\n")
+        #np.savez('embeddings', we=we)
 
 if __name__ == '__main__':
     Glove().main()

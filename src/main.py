@@ -31,7 +31,7 @@ if __name__ == "__main__":
         # 2. generate document embedding
         # 3. split dataset to training set and validation set
 
-        # training the model
+        # Train the model
         print("Training " + sys.argv[1] + "model on positive dataset " + pos_src +
               " and negative dataset " + neg_src)
         model = models.getModel(sys.argv[1])()

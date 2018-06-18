@@ -112,18 +112,14 @@ class SVM(BaseModel):
     def train(self, pos_src, neg_src):
         self.load_training_data(pos_src, neg_src)
         print("train")
-        n_estimators = 10
+        # n_estimators = 10
         clf = SVC(C=1e3, kernel='rbf', class_weight='balanced')
         # clf = OneVsRestClassifier(BaggingClassifier(SVC(kernel='linear', probability=True, class_weight='balanced'),
         #                                            max_samples=1.0 / n_estimators, n_estimators=n_estimators), n_jobs=-1)
 
         print("svm create")
-      
-        clf.fit(self.X, self.Y) 
-      
-
+        clf.fit(self.X, self.Y)        
         print("svm fit")
-       
         self.model = clf
         print("Trained model: " + str(self.model))
 

@@ -26,10 +26,20 @@ if __name__ == "__main__":
         pos_src = pos_default if argc < 3 else sys.argv[2]
         neg_src = neg_default if argc < 4 else sys.argv[3]
         test_src = test_default if argc < 5 else sys.argv[4]
+        ### general pipeline here 
+        # 1. generate word embedding
+        # 2. generate document embedding
+        # 3. split dataset to training set and validation set
+
+        # training the model
         print("Training " + sys.argv[1] + "model on positive dataset " + pos_src +
               " and negative dataset " + neg_src)
         model = models.getModel(sys.argv[1])()
         model.train(pos_src, neg_src)
+
+        # 4. get and output the validation error
+
+        # Evaluate for Kaggle submission
         print("Evaluating for kaggle submission on test set " + test_src)
         utils.ensure_dir("../output/models/%s" % sys.argv[1])
         model.evaluate_for_kaggle(test_src,

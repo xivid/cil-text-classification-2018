@@ -7,6 +7,7 @@ import utils
 import numpy as np
 from sklearn.model_selection import train_test_split
 from gensim.models import KeyedVectors
+from datasources import feature_extraction
 
 pos_default = "../data/twitter-datasets/train_pos.txt"
 neg_default = "../data/twitter-datasets/train_neg.txt"
@@ -58,7 +59,7 @@ if __name__ == "__main__":
         model.train(X_train, y_train)
 
         # 4. compute and output the validation error [TO DO]
-        
+
 
         # 5. Preprocess test data into feature vectors [TO DO]
 

@@ -4,8 +4,10 @@ from sklearn.utils.validation import check_array
 from sklearn.svm import SVC
 
 class SVM(BaseModel):
-    def __init__(self, save_path=None, kernel='linear', penalty=1.0):
+    def __init__(self, save_path=None):
         BaseModel.__init__(self, save_path)
+        kernel='linear'
+        penalty=1.0
         self.model = SVC(C=penalty,
                          kernel=kernel,
                          class_weight="balanced")

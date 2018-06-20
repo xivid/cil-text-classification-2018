@@ -1,6 +1,7 @@
 """Model definitions (one class per file) to define NN architectures."""
 from .bayes import NaiveBayes
-from .svm import SVM
+#from .svm import SVM
+from .new_svm import SVM
 
 __all__ = ('NaiveBayes', 'SVM')
 

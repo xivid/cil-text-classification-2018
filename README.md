@@ -1,6 +1,6 @@
 # CIL Text Classification Project
 
-Problem: Given a tweet from which a smiley (`:)` or `:(` has been removed
+Problem: Given a tweet from which a smiley (`:)` or `:(`) has been removed
 
 Goal: Determine whether it used to contain a positive or a negative smiley 
 

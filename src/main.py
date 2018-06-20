@@ -4,10 +4,12 @@ import sys
 import models
 import datetime
 import utils
+from gensim.models import KeyedVectors
 
 pos_default = "../data/twitter-datasets/train_pos.txt"
 neg_default = "../data/twitter-datasets/train_neg.txt"
 test_default = "../data/twitter-datasets/test_data.txt"
+embedding_file = "./datasources/word2vec_embedding.txt"
 
 if __name__ == "__main__":
     if not os.getcwd().endswith("/src"):
@@ -26,9 +28,14 @@ if __name__ == "__main__":
         pos_src = pos_default if argc < 3 else sys.argv[2]
         neg_src = neg_default if argc < 4 else sys.argv[3]
         test_src = test_default if argc < 5 else sys.argv[4]
+        
         ### general pipeline here 
         # 1. generate word embedding
+        word_vectors = KeyedVectors.load_word2vec_format(embedding_file)
+        
         # 2. generate document embedding
+        X = average_vector(text_files=[pos_default, neg_default], embedding=word_vectors)   # need to add import for this
+
         # 3. split dataset to training set and validation set
 
         # Train the model

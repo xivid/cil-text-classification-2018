@@ -1,4 +1,4 @@
-from core import BaseModel
+from core import BaseModel, BaseMLModel
 import numpy as np
 from sklearn.svm import SVC
 from sklearn.multiclass import OneVsRestClassifier
@@ -146,3 +146,4 @@ class SVM(BaseModel):
                 counter += 1
 
         return self.model.predict(avg)
+

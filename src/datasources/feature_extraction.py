@@ -67,6 +67,7 @@ def sparse_matrix(text_files=[pos_src, neg_src]):
     
     return X
 
+# build the tweet embedding as the average vector of the word embeddings
 def average_vector(text_files=[pos_src, neg_src], embedding): # embedding: KeyedVectors type
     X = np.array([])
     for f in text_files:
@@ -81,7 +82,8 @@ def average_vector(text_files=[pos_src, neg_src], embedding): # embedding: Keyed
                 for token in tokens:
                     if token in embedding.wv.vocab:
                         average_vectors[idx] += embedding.wv[token]
-                average_vectors[idx] /= num_tokens
+                if num_tokens != 0:
+                    average_vectors[idx] /= num_tokens
             
             if X.size == 0:
                 X = average_vectors

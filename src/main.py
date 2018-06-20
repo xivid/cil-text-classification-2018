@@ -55,11 +55,15 @@ if __name__ == "__main__":
         print("Training " + sys.argv[1] + "model on positive dataset " + pos_src +
               " and negative dataset " + neg_src)
         model = models.getModel(sys.argv[1])()
-        model.train(pos_src, neg_src)
+        model.train(X_train, y_train)
 
-        # 4. get and output the validation error
+        # 4. compute and output the validation error [TO DO]
+        
 
-        # Evaluate for Kaggle submission
+        # 5. Preprocess test data into feature vectors [TO DO]
+
+
+        # Evaluate for Kaggle submission (need to be modified)
         print("Evaluating for kaggle submission on test set " + test_src)
         utils.ensure_dir("../output/models/%s" % sys.argv[1])
         model.evaluate_for_kaggle(test_src,

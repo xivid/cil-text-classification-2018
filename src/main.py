@@ -4,6 +4,8 @@ import sys
 import models
 import datetime
 import utils
+import numpy as np
+from sklearn.model_selection import train_test_split
 from gensim.models import KeyedVectors
 
 pos_default = "../data/twitter-datasets/train_pos.txt"
@@ -33,10 +35,21 @@ if __name__ == "__main__":
         # 1. generate word embedding
         word_vectors = KeyedVectors.load_word2vec_format(embedding_file)
         
-        # 2. generate document embedding
+        # 2. generate document embedding and build the label vector
         X = average_vector(text_files=[pos_default, neg_default], embedding=word_vectors)   # need to add import for this
-
+        y = np.array([])   
+        for fn in [pos_default, neg_default]:
+            with open(fn) as f:
+                lines = f.readlines()
+                n_lines = len(lines)
+                if fn == pos_default:
+                    y = np.full((n_lines, 1), 1)
+                else:
+                    labels = np.full((n_lines, 1), -1)
+                    y = np.vstack((y, labels))
+        
         # 3. split dataset to training set and validation set
+        X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.33, random_state=42)
 
         # Train the model
         print("Training " + sys.argv[1] + "model on positive dataset " + pos_src +

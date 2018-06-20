@@ -19,7 +19,7 @@ class BaseDataSource:
 
     def transform(self):
         """
-        generate feature vectors based on word embeddings 
+        generate document embedding (feature vectors) based on word embeddings 
         """
         raise NotImplementedError()
     """

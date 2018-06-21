@@ -2,8 +2,8 @@ class BaseModel(object):
     def __init__(self, data_source, save_path=None, **kwargs):
         self.data_source = data_source
         self.save_path = save_path
-        self.training_error = 0.0
-        self.validation_error = 0.0
+        self.training_accuracy = 0.0
+        self.validation_accuracy = 0.0
 
     def train(self, **kwargs):
         raise NotImplementedError("The train() method need to be implemented be subclasses!")

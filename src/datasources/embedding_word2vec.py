@@ -40,10 +40,12 @@ class Word2VecEmbedding(BaseDataSource):
             test_src=test_src,
             embedding=word_vectors)
 
-
     def train_we(self, pos_src, neg_src, save_path):
+        from utils import ensure_dir
+        ensure_dir(save_path)
+
         sentences = []
-        maxLen = 0;
+        maxLen = 0
         for fn in [pos_src, neg_src]:
             with open(fn) as f:
                 for line in f:

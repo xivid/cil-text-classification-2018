@@ -78,7 +78,7 @@ if __name__ == "__main__":
     model.train()
 
     # Output training and validation error
-    logging.info("Training finished with error %f, validation error %f" % (model.training_error, model.validation_error))
+    logging.info("Training finished with accuracy %f, validation accuracy %f" % (model.training_accuracy, model.validation_accuracy))
 
     # Evaluate for Kaggle submission (need to be modified) TODO
     logging.info("Evaluating for kaggle submission")

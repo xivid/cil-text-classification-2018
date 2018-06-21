@@ -71,7 +71,7 @@ if __name__ == "__main__":
     )
 
     # Train the model
-    logger.info("Training " + datasource_name)
+    logger.info("Training " + model_name)
     model = models.get_model(model_name)(
         data_source=data_source
     )

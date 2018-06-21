@@ -18,6 +18,7 @@ setup(
             'scipy',
             'sklearn',
             'gensim',
+            'lightgbm',
             # 'tensorflow',
         ],
 )

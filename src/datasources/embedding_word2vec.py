@@ -55,7 +55,7 @@ class Word2VecEmbedding(BaseDataSource):
                     sentences.append(splitted)
 
         logger.info("Starting word2vec")
-        feature_dimensions = 20
+        feature_dimensions = 300
         model = Word2Vec(sentences, size=feature_dimensions)
         model.wv.save_word2vec_format(save_path)
 

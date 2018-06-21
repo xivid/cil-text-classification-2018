@@ -5,7 +5,9 @@ import numpy as np
 from utils.feature_extraction import average_vector
 from gensim.models import KeyedVectors
 from pathlib import Path
+import logging
 
+logger = logging.getLogger("GloVe")
 
 class GloVe(BaseDataSource):
     """
@@ -17,14 +19,18 @@ class GloVe(BaseDataSource):
     def preprocess(self, pos_src, neg_src, test_src, embedding_src=""):
         if embedding_src != "":
             # load pre-trained embeddings
+            logger.info("Loading external embeddings")
             word_vectors = KeyedVectors.load_word2vec_format(embedding_src)
         else:
             saved_path = "../output/datasources/" + self.__class__.__name__ + "/embeddings.npz"
             saved = Path(saved_path)
             if saved.is_file():
+                logger.info("Loading cached embeddings from " + saved_path)
                 word_vectors = np.load(saved_path)
             else:
+                logger.info("Training word embeddings and saving to " + saved_path)
                 word_vectors = self.train_we(pos_src, neg_src)
+        logger.info("Calculating average vectors")
         self.X, self.Y, self.testX = average_vector(
             pos_src=pos_src,
             neg_src=neg_src,
@@ -45,7 +51,7 @@ class GloVe(BaseDataSource):
 
         data, row, col = [], [], []
         counter = 1
-        for fn in ['../../data/train_pos.txt', '../../data/train_neg.txt']:
+        for fn in [pos_src, neg_src]:
             with open(fn) as f:
                 for line in f:
                     tokens = [vocab.get(t, -1) for t in line.strip().split()]
@@ -57,23 +63,23 @@ class GloVe(BaseDataSource):
                             col.append(t2)
 
                     if counter % 10000 == 0:
-                        print(counter)
+                        logger.info("read %d samples" % counter)
                     counter += 1
         cooc = coo_matrix((data, (row, col)))
-        print("summing duplicates (this can take a while)")
+        logger.info("summing duplicates (this can take a while)")
         cooc.sum_duplicates()
         # with open('cooc.pkl', 'wb') as f:
         #     pickle.dump(cooc, f, pickle.HIGHEST_PROTOCOL)
         # print("loading cooccurrence matrix")
         # with open('cooc.pkl', 'rb') as f:
         #     cooc = pickle.load(f)
-        print("{} nonzero entries".format(cooc.nnz))
+        logger.info("{} nonzero entries".format(cooc.nnz))
 
         nmax = 100
-        print("using nmax =", nmax, ", cooc.max() =", cooc.max())
+        logger.info("using nmax = %d, cooc.max() = %d" % (nmax, str(cooc.max())))
 
-        print("initializing embeddings")
-        print("cooc shape 0: ", cooc.shape[0], "cooc shape 1: ", cooc.shape[1])
+        logger.info("initializing embeddings")
+        logger.info("cooc shape 0: %s, cooc shape 1: %s" % (str(cooc.shape[0]), str(cooc.shape[1])))
         embedding_dim = 20
         xs = np.random.normal(size=(cooc.shape[0], embedding_dim))
         ys = np.random.normal(size=(cooc.shape[1], embedding_dim))
@@ -84,7 +90,7 @@ class GloVe(BaseDataSource):
         epochs = 20
 
         for epoch in range(epochs):
-            print("epoch {}".format(epoch))
+            logger.info("epoch {}".format(epoch))
             for ix, jy, n in zip(cooc.row, cooc.col, cooc.data):
                 logn = np.log(n)
                 fn = min(1.0, (n / nmax) ** alpha)
@@ -99,7 +105,7 @@ class GloVe(BaseDataSource):
             for i, word in enumerate(g):
                 coords = ' '.join([str(b) for b in we[i].tolist()])
                 f.write(word.strip() + " " + coords + "\n")
-        np.savez('embeddings.npz', we=we)
+        np.savez('../output/datasources/GloVe/embeddings.npz', we=we)
 
         return we
 

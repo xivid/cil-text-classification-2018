@@ -5,7 +5,7 @@ from sklearn.svm import SVC
 from sklearn.model_selection import train_test_split
 import logging
 
-logger = logging.getLogger("main")
+logger = logging.getLogger("SVM")
 
 class SVM(BaseModel):
     def __init__(self, data_source, save_path=None, kernel='linear', penalty=1.0, valid_size=0.33):

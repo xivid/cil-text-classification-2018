@@ -18,10 +18,10 @@ if __name__ == "__main__":
 
     # Set global log level
     parser = argparse.ArgumentParser(description='Train a text classification model.')
-    parser.add_argument('--model', '-m', type=str, help='training model', choices=models.__all__, required=True)
+    parser.add_argument('-m', '--model', type=str, help='training model', choices=models.__all__, required=True)
     # TODO: add necessary arguments required by models
     # e.g. parser.add_argument('-lr', type=float, help="learning rate", default=0.1)
-    parser.add_argument('--datasource', '-d', type=str, help='data source (features used in the model)',
+    parser.add_argument('-d', '--datasource', type=str, help='data source (features used in the model)',
                         choices=datasources.__all__, required=True)
     # TODO: add necessary arguments required by data sources
     parser.add_argument('-p', type=str, help='Path to positive training dataset', default=pos_default)

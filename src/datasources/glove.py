@@ -40,14 +40,25 @@ class GloVe(BaseDataSource):
 
     def train_we(self, pos_src, neg_src, save_path):
         import subprocess
+        from utils import ensure_dir
+        ensure_dir(output_dir)
+
         vocab_path = output_dir + "vocab.txt"
+        logging.info("building vocab.txt: " +
+                     r'cat %s %s | sed "s/ /\n/g" | grep -v "^\s*$" | sort | uniq -c > %s'
+                     % (pos_src, neg_src, vocab_path))
         subprocess.call(["bash", "-c",
                          r'cat %s %s | sed "s/ /\n/g" | grep -v "^\s*$" | sort | uniq -c > %s'
                          % (pos_src, neg_src, vocab_path)])
+
         vocab_cut_path = output_dir + "vocab_cut.txt"
+        logging.info("building vocab_cut.txt: " +
+                     r'cat %s | sed "s/^\s\+//g" | sort -rn | grep -v "^[1234]\s" | cut -d" " -f2 > %s'
+                     % (vocab_path, vocab_cut_path))
         subprocess.call(["bash", "-c",
                          r'cat %s | sed "s/^\s\+//g" | sort -rn | grep -v "^[1234]\s" | cut -d" " -f2 > %s'
                          % (vocab_path, vocab_cut_path)])
+
         vocab = dict()
         with open(vocab_cut_path) as f:
             for idx, line in enumerate(f):

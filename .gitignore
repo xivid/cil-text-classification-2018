@@ -10,6 +10,8 @@ venv
 
 # Python caches
 __pycache__
+cil_text_classification_2018.egg-info
+dist
 
 # IDE IDEA files
 .idea

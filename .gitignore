@@ -3,7 +3,7 @@ data/*
 !data/get_dataset.sh
 
 # Outputs
-output
+output/datasources
 
 # Virtualenv
 venv

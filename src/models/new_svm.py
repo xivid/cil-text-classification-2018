@@ -1,5 +1,6 @@
 from core import BaseModel
 import numpy as np
+import pickle
 from sklearn.utils.validation import check_array
 from sklearn.svm import SVC
 from sklearn.model_selection import train_test_split
@@ -24,7 +25,11 @@ class SVM(BaseModel):
         self.model = self.model.fit(X_train, y_train)
         logger.info("Trained model: " + str(self.model))
 
-        # TODO: save errors
+        # save the trained model
+        # logger.info("Saving the model to " + self.save_path)
+        # pickle.dump(self.model, self.save_path)
+
+        # TODO: calculate errors
         self.training_error = 0.0
         self.validation_error = 0.0
     

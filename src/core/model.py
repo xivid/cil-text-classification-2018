@@ -18,12 +18,16 @@ class BaseModel(object):
         self.save_path = save_path
 
     def evaluate_for_kaggle(self, output_src):
+        import logging
+        logger = logging.getLogger(self.__class__.__name__)
+        logger.info("Predicting on test set...")
         predictions = self.predict(self.data_source.testX)
 
+        logger.info("Writing to submission file...")
         from utils import ensure_dir
         ensure_dir(output_src)
         with open(output_src, "w") as f:
             f.write("Id,Prediction\n")
             for idx, val in enumerate(predictions):
                 f.write("%d,%d\n" % (idx + 1, val))
-        print("Submission file saved: " + output_src)
+        logger.info("Submission file saved: " + output_src)

@@ -9,7 +9,7 @@ logger = logging.getLogger("LightGBM")
 
 
 class LightGBM(BaseModel):
-    def __init__(self, data_source, save_path=None, valid_size=0.25):
+    def __init__(self, data_source, save_path=None, valid_size=0.20):
         BaseModel.__init__(self, data_source, save_path)
         self.valid_size = valid_size
         self.model = None
@@ -22,7 +22,11 @@ class LightGBM(BaseModel):
         train_data = lgb.Dataset(X_train, label=y_train)
         valid_data = lgb.Dataset(X_val, label=y_val)
 
-        param = {'num_leaves': 31, 'objective': 'binary', 'metric': ['binary_error', 'binary_logloss']}
+        param = {'max_depth': 8,
+                 'num_leaves': 127,
+                 'learning_rate': 0.05,
+                 'objective': 'binary',
+                 'metric': ['binary_error', 'binary_logloss']}
         num_round = 500
         self.model = lgb.train(param, train_data, num_round, valid_sets=[valid_data])
         logger.info("Trained model: " + str(self.model))

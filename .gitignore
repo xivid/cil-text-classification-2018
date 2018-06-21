@@ -1,6 +1,7 @@
 # Datasets
 data/*
 !data/get_dataset.sh
+!data/glove_to_word2vec.py
 
 # Outputs
 output/datasources

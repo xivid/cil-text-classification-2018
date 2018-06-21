@@ -78,8 +78,8 @@ if __name__ == "__main__":
     model.train()
 
     # Output training and validation error
-    logging.info("Training finished with accuracy %f, validation accuracy %f" % (model.training_accuracy, model.validation_accuracy))
+    logger.info("Training finished with accuracy %f, validation accuracy %f" % (model.training_accuracy, model.validation_accuracy))
 
     # Evaluate for Kaggle submission (need to be modified) TODO
-    logging.info("Evaluating for kaggle submission")
+    logger.info("Evaluating for kaggle submission")
     model.evaluate_for_kaggle("../output/models/%s/kaggle_%s.csv" % (model_name, datetime.datetime.now().strftime("%Y%m%d%H%M%S")))

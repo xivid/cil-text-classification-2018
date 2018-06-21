@@ -23,8 +23,8 @@ class LightGBM(BaseModel):
         valid_data = lgb.Dataset(X_val, label=y_val)
 
         param = {'max_depth': 8,
-                 'num_leaves': 127,
-                 'learning_rate': 0.05,
+                 'num_leaves': 63,
+                 'learning_rate': 0.2,
                  'objective': 'binary',
                  'metric': ['binary_error', 'binary_logloss']}
         num_round = 500

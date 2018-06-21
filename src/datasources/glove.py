@@ -10,6 +10,7 @@ import logging
 logger = logging.getLogger("GloVe")
 output_dir = "../output/datasources/GloVe/"
 
+
 class GloVe(BaseDataSource):
     """
     This GloVe class train the word embeddings in preprocess()->train_we() (and output the intermediate results to ../../output/datasources/GloVe/),
@@ -44,17 +45,17 @@ class GloVe(BaseDataSource):
         ensure_dir(output_dir)
 
         vocab_path = output_dir + "vocab.txt"
-        logging.info("building vocab.txt: " +
-                     r'cat %s %s | sed "s/ /\n/g" | grep -v "^\s*$" | sort | uniq -c > %s'
-                     % (pos_src, neg_src, vocab_path))
+        logger.info("building vocab.txt: " +
+                    r'cat %s %s | sed "s/ /\n/g" | grep -v "^\s*$" | sort | uniq -c > %s'
+                    % (pos_src, neg_src, vocab_path))
         subprocess.call(["bash", "-c",
                          r'cat %s %s | sed "s/ /\n/g" | grep -v "^\s*$" | sort | uniq -c > %s'
                          % (pos_src, neg_src, vocab_path)])
 
         vocab_cut_path = output_dir + "vocab_cut.txt"
-        logging.info("building vocab_cut.txt: " +
-                     r'cat %s | sed "s/^\s\+//g" | sort -rn | grep -v "^[1234]\s" | cut -d" " -f2 > %s'
-                     % (vocab_path, vocab_cut_path))
+        logger.info("building vocab_cut.txt: " +
+                    r'cat %s | sed "s/^\s\+//g" | sort -rn | grep -v "^[1234]\s" | cut -d" " -f2 > %s'
+                    % (vocab_path, vocab_cut_path))
         subprocess.call(["bash", "-c",
                          r'cat %s | sed "s/^\s\+//g" | sort -rn | grep -v "^[1234]\s" | cut -d" " -f2 > %s'
                          % (vocab_path, vocab_cut_path)])

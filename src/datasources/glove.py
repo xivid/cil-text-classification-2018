@@ -96,14 +96,14 @@ class GloVe(BaseDataSource):
 
         logger.info("initializing embeddings")
         logger.info("cooc shape 0: %s, cooc shape 1: %s" % (str(cooc.shape[0]), str(cooc.shape[1])))
-        embedding_dim = 20
+        embedding_dim = 300
         xs = np.random.normal(size=(cooc.shape[0], embedding_dim))
         ys = np.random.normal(size=(cooc.shape[1], embedding_dim))
 
         eta = 0.001
         alpha = 3 / 4
 
-        epochs = 20
+        epochs = 5
 
         for epoch in range(epochs):
             logger.info("epoch {}".format(epoch))

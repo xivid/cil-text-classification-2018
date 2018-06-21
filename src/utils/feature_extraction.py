@@ -67,10 +67,11 @@ def sparse_matrix(text_files=[pos_src, neg_src]):
     
     return X
 
+
 # build the tweet embedding as the average vector of the word embeddings
-def average_vector(text_files=[pos_src, neg_src], embedding): # embedding: KeyedVectors type
+def average_vector(pos_src, neg_src, test_src, embedding): # embedding: KeyedVectors type
     X = np.array([])
-    for f in text_files:
+    for fn in [pos_src, neg_src]:
         with open(fn) as f:
             lines = f.readlines()
             num_tweet = len(lines)
@@ -87,10 +88,28 @@ def average_vector(text_files=[pos_src, neg_src], embedding): # embedding: Keyed
             
             if X.size == 0:
                 X = average_vectors
+                Y = np.array([1] * num_tweet)
             else:
                 X = np.vstack((X, average_vectors))
-                
-    return X
+                Y = np.concatenate((Y, [-1] * num_tweet))
+
+    testX = np.array([])
+    with open(test_src) as f:
+        lines = f.readlines()
+        num_tweet = len(lines)
+        average_vectors = np.zeros((num_tweet, embedding.vector_size), dtype=np.float32)
+        # build average vector for each line
+        for idx, line in enumerate(lines):
+            tokens = line.split()
+            num_tokens = len(tokens)
+            for token in tokens:
+                if token in embedding.wv.vocab:
+                    average_vectors[idx] += embedding.wv[token]
+            if num_tokens != 0:
+                average_vectors[idx] /= num_tokens
+        testX = average_vectors
+
+    return X, Y, testX
 
 if __name__ == '__main__':
     main()

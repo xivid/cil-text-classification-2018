@@ -6,7 +6,7 @@ from sklearn.ensemble import BaggingClassifier
 from datasources import Glove
 
 
-# TODO: rewrite this class to use preprocess() and yield_one_sample() of class Glove, don't do data preprocessing here
+# TODO: rewrite this class to use preprocess() and yield_one_sample() of class GloVe, don't do data preprocessing here
 class SVM(BaseModel):
     def __init__(self):
         BaseModel.__init__(self)

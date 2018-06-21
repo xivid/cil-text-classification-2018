@@ -1,9 +1,15 @@
-class BaseDataSource:
-    def preprocess(self):
+class BaseDataSource(object):
+    def preprocess(self, **kwargs):
         """
-        preprocess the data source file
+        preprocess the data source file, store in self.X and self.Y
         """
         raise NotImplementedError()
+
+    def __init__(self, **kwargs):
+        self.X = None
+        self.Y = None
+        self.testX = None
+        self.preprocess(**kwargs)
 
     def yield_one_sample(self):
         """

@@ -51,11 +51,11 @@ Please refer to  `README.md` under these folders for detailed descriptions.
 
 Simply `cd` into the `src/` directory and run
 ```
-python3 main.py [model]
+python3 main.py -h
 ```
-Our current best performing model is a Naive Bayes model, so to get the best result please run
+Follow the instructions to invoke the trainer with appropriate arguments. Example arguments for SVM:
 ```
-python3 main.py NaiveBayes
+python3 main.py -m SVM -d GloVe
 ```
 
 ## Evaluation

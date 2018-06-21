@@ -7,8 +7,8 @@ setup(
         version='0.1',
         description='CIL Project for Text Sentiment Classification.',
 
-        author='Zhifei Yang',
-        author_email='zhiyang@student.ethz.ch',
+        author='CIL Group 42',
+        author_email='',
 
         packages=find_packages(exclude=[]),
         python_requires='>=3.5',
@@ -17,6 +17,7 @@ setup(
             'numpy',
             'scipy',
             'sklearn',
+            'gensim',
             # 'tensorflow',
         ],
 )

@@ -1,24 +1,11 @@
 class BaseModel(object):
-    def train(self, pos_src, neg_src):
-        raise NotImplementedError("The train() method need to be implemented be subclasses!")
-
-    def predict(self, test_src):
-        raise NotImplementedError("The predict() method need to be implemented be subclasses!")
-
-    def evaluate_for_kaggle(self, test_src, output_src):
-        predictions = self.predict(test_src)
-        with open(output_src, "w") as f:
-            f.write("Id,Prediction\n")
-            for idx, val in enumerate(predictions):
-                f.write("%d,%d\n" % (idx + 1, val))
-        print("Submission file saved: " + output_src)
-
-# new base model for building traditional ML classifier
-class BaseMLModel(object):
-    def __init__(self, save_path=None):
+    def __init__(self, data_source, save_path=None, **kwargs):
+        self.data_source = data_source
         self.save_path = save_path
+        self.training_error = 0.0
+        self.validation_error = 0.0
 
-    def train(self, X, y):
+    def train(self, **kwargs):
         raise NotImplementedError("The train() method need to be implemented be subclasses!")
     
     def predict(self, X):
@@ -30,8 +17,11 @@ class BaseMLModel(object):
     def set_save_path(self, save_path):
         self.save_path = save_path
 
-    def evaluate_for_kaggle(self, X, output_src):
-        predictions = self.predict(X)
+    def evaluate_for_kaggle(self, output_src):
+        predictions = self.predict(self.data_source.testX)
+
+        from utils import ensure_dir
+        ensure_dir(output_src)
         with open(output_src, "w") as f:
             f.write("Id,Prediction\n")
             for idx, val in enumerate(predictions):

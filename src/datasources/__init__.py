@@ -1,4 +1,11 @@
-from .glove import Glove
-import feature_extraction
+from .glove import GloVe
 
-__all__ = ("Glove", "feature_extraction")
+__all__ = ("GloVe", )
+
+
+def get_datasource(name):
+    if name == "GloVe":
+        return GloVe
+
+    else:
+        raise NotImplementedError("No data source called \"%s\"!" % name)

@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 from scipy.sparse import csr_matrix
 import numpy as np
-import pickle
-import random
+import logging
 
 pos_src = '../../data/train_pos.txt'
 neg_src = '../../data/train_neg.txt'
@@ -70,13 +69,17 @@ def sparse_matrix(text_files=[pos_src, neg_src]):
 
 # build the tweet embedding as the average vector of the word embeddings
 def average_vector(pos_src, neg_src, test_src, embedding): # embedding: KeyedVectors type
+    logger = logging.getLogger("average_vector")
+
     X = np.array([])
     for fn in [pos_src, neg_src]:
         with open(fn) as f:
+            logger.info("processing " + fn)
             lines = f.readlines()
             num_tweet = len(lines)
             average_vectors = np.zeros((num_tweet, embedding.vector_size), dtype=np.float32)
             # build average vector for each line
+            counter = 1
             for idx, line in enumerate(lines):
                 tokens = line.split()
                 num_tokens = len(tokens)
@@ -85,7 +88,10 @@ def average_vector(pos_src, neg_src, test_src, embedding): # embedding: KeyedVec
                         average_vectors[idx] += embedding.wv[token]
                 if num_tokens != 0:
                     average_vectors[idx] /= num_tokens
-            
+                if counter % 10000 == 0:
+                    logger.info("read %d samples" % counter)
+                counter += 1
+
             if X.size == 0:
                 X = average_vectors
                 Y = np.array([1] * num_tweet)
@@ -95,10 +101,12 @@ def average_vector(pos_src, neg_src, test_src, embedding): # embedding: KeyedVec
 
     testX = np.array([])
     with open(test_src) as f:
+        logger.info("processing " + test_src)
         lines = f.readlines()
         num_tweet = len(lines)
         average_vectors = np.zeros((num_tweet, embedding.vector_size), dtype=np.float32)
         # build average vector for each line
+        counter = 1
         for idx, line in enumerate(lines):
             tokens = line.split()
             num_tokens = len(tokens)
@@ -107,6 +115,9 @@ def average_vector(pos_src, neg_src, test_src, embedding): # embedding: KeyedVec
                     average_vectors[idx] += embedding.wv[token]
             if num_tokens != 0:
                 average_vectors[idx] /= num_tokens
+            if counter % 10000 == 0:
+                logger.info("read %d samples" % counter)
+            counter += 1
         testX = average_vectors
 
     return X, Y, testX

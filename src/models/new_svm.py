@@ -13,12 +13,11 @@ class SVM(BaseModel):
         self.valid_size = valid_size
         self.model = SVC(C=penalty,
                          kernel=kernel,
-                         class_weight="balanced")
+                         class_weight="balanced",
+                         verbose=True)
     
-    def train(self, X, y):
-        logger.info("Start fitting SVM model...")
-        X = check_array(X)
-        y = check_array(y)
+    def train(self):
+        logger.info("Fitting SVM model...")
 
         X_train, X_val, y_train, y_val = train_test_split(self.data_source.X, self.data_source.Y, test_size=self.valid_size, random_state=42)
 

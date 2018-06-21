@@ -8,6 +8,7 @@ from pathlib import Path
 import logging
 
 logger = logging.getLogger("GloVe")
+output_dir = "../output/datasources/GloVe/"
 
 class GloVe(BaseDataSource):
     """
@@ -22,14 +23,14 @@ class GloVe(BaseDataSource):
             logger.info("Loading external embeddings")
             word_vectors = KeyedVectors.load_word2vec_format(embedding_src)
         else:
-            saved_path = "../output/datasources/" + self.__class__.__name__ + "/embeddings.npz"
+            saved_path = output_dir + "glove_word_embedding.txt"
             saved = Path(saved_path)
             if saved.is_file():
                 logger.info("Loading cached embeddings from " + saved_path)
-                word_vectors = np.load(saved_path)
+                word_vectors = KeyedVectors.load_word2vec_format(saved_path)
             else:
                 logger.info("Training word embeddings and saving to " + saved_path)
-                word_vectors = self.train_we(pos_src, neg_src)
+                word_vectors = self.train_we(pos_src, neg_src, saved_path)
         logger.info("Calculating average vectors")
         self.X, self.Y, self.testX = average_vector(
             pos_src=pos_src,
@@ -37,14 +38,18 @@ class GloVe(BaseDataSource):
             test_src=test_src,
             embedding=word_vectors)
 
-    def train_we(self, pos_src, neg_src):
+    def train_we(self, pos_src, neg_src, save_path):
         import subprocess
+        vocab_path = output_dir + "vocab.txt"
         subprocess.call(["bash", "-c",
-                         r'cat %s %s | sed "s/ /\n/g" | grep -v "^\s*$" | sort | uniq -c > ../output/datasources/GloVe/vocab.txt' % (pos_src, neg_src)])
+                         r'cat %s %s | sed "s/ /\n/g" | grep -v "^\s*$" | sort | uniq -c > %s'
+                         % (pos_src, neg_src, vocab_path)])
+        vocab_cut_path = output_dir + "vocab_cut.txt"
         subprocess.call(["bash", "-c",
-                         r'cat ../output/datasources/GloVe/vocab.txt | sed "s/^\s\+//g" | sort -rn | grep -v "^[1234]\s" | cut -d" " -f2 > ../output/datasources/GloVe/vocab_cut.txt'])
+                         r'cat %s | sed "s/^\s\+//g" | sort -rn | grep -v "^[1234]\s" | cut -d" " -f2 > %s'
+                         % (vocab_path, vocab_cut_path)])
         vocab = dict()
-        with open('../output/datasources/GloVe/vocab_cut.txt') as f:
+        with open(vocab_cut_path) as f:
             for idx, line in enumerate(f):
                 vocab[line.strip()] = idx
         vocab_size = len(vocab)
@@ -76,7 +81,7 @@ class GloVe(BaseDataSource):
         logger.info("{} nonzero entries".format(cooc.nnz))
 
         nmax = 100
-        logger.info("using nmax = %d, cooc.max() = %d" % (nmax, str(cooc.max())))
+        logger.info("using nmax = %d, cooc.max() = %s" % (nmax, str(cooc.max())))
 
         logger.info("initializing embeddings")
         logger.info("cooc shape 0: %s, cooc shape 1: %s" % (str(cooc.shape[0]), str(cooc.shape[1])))
@@ -87,7 +92,7 @@ class GloVe(BaseDataSource):
         eta = 0.001
         alpha = 3 / 4
 
-        epochs = 20
+        epochs = 1
 
         for epoch in range(epochs):
             logger.info("epoch {}".format(epoch))
@@ -100,12 +105,13 @@ class GloVe(BaseDataSource):
                 ys[jy, :] += scale * x
 
         we = xs + ys
-        with open("../output/datasources/GloVe/glove_word_embedding.txt", "w") as f, open("../output/datasources/GloVe/vocab_cut.txt", "r") as g:
+        with open(save_path, "w") as f, open(vocab_cut_path, "r") as g:
             f.write(str(cooc.shape[0]) + " " + str(embedding_dim) + "\n")
             for i, word in enumerate(g):
                 coords = ' '.join([str(b) for b in we[i].tolist()])
                 f.write(word.strip() + " " + coords + "\n")
-        np.savez('../output/datasources/GloVe/embeddings.npz', we=we)
 
-        return we
+        model = KeyedVectors.load_word2vec_format(save_path)
+
+        return model
 

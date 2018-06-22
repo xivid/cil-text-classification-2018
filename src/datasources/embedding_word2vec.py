@@ -3,6 +3,7 @@ from gensim.models import Word2Vec, KeyedVectors
 from utils.feature_extraction import average_vector
 from pathlib import Path
 import logging
+import os
 
 logger = logging.getLogger("Word2Vec")
 output_dir = "../output/datasources/Word2Vec/"
@@ -19,7 +20,15 @@ class Word2VecEmbedding(BaseDataSource):
         if embedding_src != "":
             # load pre-trained embeddings
             logger.info("Loading external embeddings")
-            word_vectors = KeyedVectors.load_word2vec_format(embedding_src)
+            file_type = os.path.splitext(embedding_src)[1]
+            if file_type == ".bin":
+                is_binary = True
+            elif file_type == ".txt":
+                is_binary = False
+            else:
+                logger.error("Unsupported file type!")
+            word_vectors = KeyedVectors.load_word2vec_format(embedding_src, binary = is_binary)
+                
         else:
             saved_path = output_dir + "word2vec_word_embedding.txt"
             saved = Path(saved_path)

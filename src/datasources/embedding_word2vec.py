@@ -4,10 +4,6 @@ from utils.feature_extraction import average_vector
 from pathlib import Path
 import logging
 
-pos_filename = '../../data/train_pos.txt'
-neg_filename = '../../data/train_neg.txt'
-test_filename = '../../data/test_data_stripped.txt'
-
 logger = logging.getLogger("Word2Vec")
 output_dir = "../output/datasources/Word2Vec/"
 

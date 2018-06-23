@@ -57,14 +57,14 @@ class Doc2VecEmbedding(BaseDataSource):
                 else:
                     Y = np.concatenate((Y, [-1] * num_tweet))
         self.Y = Y
-        self.testX = np.zeros((num_tweet, 400), dtype=np.float32)
 
         with open(test_src) as f:
             logger.info("processing " + fn)
-            for line in f:
-                lines = f.readlines()
-                num_tweet = len(lines)
-                for idx, line in enumerate(lines):
+            lines = f.readlines()
+            num_tweet = len(lines)
+            self.testX = np.zeros((num_tweet, 400), dtype=np.float32)
+
+            for idx, line in enumerate(lines):
                     self.testX[idx] = model.infer_vector(gensim.utils.simple_preprocess(line))
 
         print(self.testX)

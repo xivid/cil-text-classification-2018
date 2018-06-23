@@ -26,7 +26,7 @@ class Doc2VecEmbedding(BaseDataSource):
             logger.info("Loading external embeddings")
             file_type = os.path.splitext(embedding_src)[1]
             if file_type == ".model":
-                word_vectors = gensim.models.Doc2Vec.load(embedding_src)
+                model = gensim.models.Doc2Vec.load(embedding_src)
             else:
                 logger.error("Unsupported file type!")
 
@@ -36,14 +36,14 @@ class Doc2VecEmbedding(BaseDataSource):
             saved = Path(saved_path)
             if saved.is_file():
                 logger.info("Loading cached embeddings from " + saved_path)
-                word_vectors = gensim.models.Doc2Vec.load(saved_path).docvecs
+                model = gensim.models.Doc2Vec.load(saved_path)
 
             else:
                 logger.info("Training doc embeddings and saving to " + saved_path)
-                word_vectors = self.train_we(pos_src, neg_src, saved_path)
+                model = self.train_we(pos_src, neg_src, saved_path)
 
-        #print(word_vectors[2])
-        self.X = word_vectors
+        self.X = model.docvecs
+        print(self.X[2])
         Y = np.array([])
 
         for fn in [pos_src, neg_src]:
@@ -56,18 +56,29 @@ class Doc2VecEmbedding(BaseDataSource):
                     Y = np.array([1] * num_tweet)
                 else:
                     Y = np.concatenate((Y, [-1] * num_tweet))
-
         self.Y = Y
-        self.testX = np.array([])
+        self.testX = np.zeros((num_tweet, 400), dtype=np.float32)
+
+        with open(test_src) as f:
+            logger.info("processing " + fn)
+            for line in f:
+                lines = f.readlines()
+                num_tweet = len(lines)
+                for idx, line in enumerate(lines):
+                    self.testX[idx] = model.infer_vector(gensim.utils.simple_preprocess(line))
+
+        print(self.testX)
         
     def train_we(self, pos_src, neg_src, save_path):
         from utils import ensure_dir
         ensure_dir(output_dir)
+        print("train")
 
+        train_corpus = []
         for fname in [pos_src, neg_src]:
             with smart_open.smart_open(fname, encoding="iso-8859-1") as f:
                 # For training data, add tags
-                train_corpus = [gensim.models.doc2vec.TaggedDocument(gensim.utils.simple_preprocess(line), [i]) for i, line in enumerate(f)]
+                train_corpus += [gensim.models.doc2vec.TaggedDocument(gensim.utils.simple_preprocess(line), [i]) for i, line in enumerate(f)]
 
         max_epochs = 100
         alpha = 0.025
@@ -87,7 +98,7 @@ class Doc2VecEmbedding(BaseDataSource):
         #model = gensim.models.Doc2Vec.load(save_path)
         #docvecs = model.docvecs
         #print (docvecs[3])
-        return model.docvecs
+        return model
 
 if __name__ == "__main__":
     main()

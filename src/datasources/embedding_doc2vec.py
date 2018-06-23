@@ -69,7 +69,7 @@ class Doc2VecEmbedding(BaseDataSource):
                 # For training data, add tags
                 train_corpus = [gensim.models.doc2vec.TaggedDocument(gensim.utils.simple_preprocess(line), [i]) for i, line in enumerate(f)]
 
-        max_epochs = 2
+        max_epochs = 100
         alpha = 0.025
         
         print(train_corpus)

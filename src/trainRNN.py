@@ -5,12 +5,13 @@ import tensorflow as tf
 import numpy as np
 from gensim.models import KeyedVectors
 from utils.feature_extraction import token_array
-pos_src = '../data/twitter-datasets/train_pos.txt'
-neg_src = '../data/twitter-datasets/train_neg.txt'
+pos_src = '../data/twitter-datasets/train_pos_full.txt'
+neg_src = '../data/twitter-datasets/train_neg_full.txt'
 test_src = '../data/twitter-datasets/test_data.txt'
 out_dir = '../output/models/RNN/'
 embedding_src = '../data/glove.twitter.27B/glove.twitter.27B.200d.word2vec.txt'
 
+print("Loading word2vec embeddings...")
 embedding = KeyedVectors.load_word2vec_format(embedding_src)
 X, Y, testX, max_tok_count = token_array(pos_src, neg_src, test_src)
 Y = np.array([[1, 0] if i == 1 else [0, 1] for i in Y], dtype=np.float32)
@@ -77,12 +78,13 @@ val_samples = 10000
 val_split = 50
 n_epochs = 100
 batch_size = 64
-learning_rate = 1e-4
+learning_rate = 0.001 # 1e-4
 eval_every_step = 1000
 output_every_step = 50
 checkpoint_every_step = 1000
 
 # Split into training and validation
+print("Splitting dataset into training and validation...")
 shuffled_idx = np.random.permutation(np.arange(X.shape[0]))
 shuffled_X = X[shuffled_idx]
 shuffled_Y = Y[shuffled_idx]
@@ -93,6 +95,7 @@ train_X = shuffled_X[val_samples:]
 train_Y = shuffled_Y[val_samples:]
 
 # RNN
+print("Building model...")
 session_conf = tf.ConfigProto(
     allow_soft_placement=True,
     log_device_placement=False)
@@ -140,6 +143,7 @@ if not os.path.exists(checkpoint_dir):
 saver = tf.train.Saver(tf.global_variables())
 
 # Initialize all variables
+print("Initializing model variables...")
 sess.run(tf.global_variables_initializer())
 
 def train_step(x_batch, y_batch, seq_len):
@@ -190,9 +194,11 @@ def evaluate_model(current_step):
           "\t(Tested on the full test set)\n"
          .format(average_loss, average_accuracy, std_accuracy))
 
+print("Generating batches...")
 batches = batch_gen(train_X, train_Y, batch_size, n_epochs, embedding, max_tok_count)
 
 # Training
+print("Training started")
 current_step = None
 try:
     lcum = 0

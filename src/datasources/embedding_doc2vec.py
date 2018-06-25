@@ -20,7 +20,7 @@ class Doc2VecEmbedding(BaseDataSource):
     each call to yield_one_sample(), or expose all samples with self.X, self.Y.
     """
     def preprocess(self, pos_src, neg_src, test_src, embedding_src=""):
-        print("preprocess")
+        logger.info("preprocessing")
         if embedding_src != "":
             # load pre-trained embeddings
             logger.info("Loading external embeddings")
@@ -43,7 +43,7 @@ class Doc2VecEmbedding(BaseDataSource):
                 model = self.train_we(pos_src, neg_src, saved_path)
 
         self.X = model.docvecs
-        print(self.X[2])
+        logger.info("self.X: len %d" % len(self.X))
         Y = np.array([])
 
         for fn in [pos_src, neg_src]:
@@ -59,47 +59,40 @@ class Doc2VecEmbedding(BaseDataSource):
         self.Y = Y
 
         with open(test_src) as f:
-            logger.info("processing " + fn)
+            logger.info("processing " + test_src)
             lines = f.readlines()
             num_tweet = len(lines)
-            self.testX = np.zeros((num_tweet, 400), dtype=np.float32)
+            self.testX = np.zeros((num_tweet, 300), dtype=np.float32)
 
             for idx, line in enumerate(lines):
                     self.testX[idx] = model.infer_vector(gensim.utils.simple_preprocess(line))
 
-        print(self.testX)
+        # print(self.testX)
         
     def train_we(self, pos_src, neg_src, save_path):
         from utils import ensure_dir
         ensure_dir(output_dir)
-        print("train")
+        logger.info("building corpus")
 
         train_corpus = []
+        i = 0  # tag number
         for fname in [pos_src, neg_src]:
             with smart_open.smart_open(fname, encoding="iso-8859-1") as f:
                 # For training data, add tags
-                train_corpus += [gensim.models.doc2vec.TaggedDocument(gensim.utils.simple_preprocess(line), [i]) for i, line in enumerate(f)]
+                logger.info("processing " + fname)
+                for line in f:
+                    train_corpus.append(gensim.models.doc2vec.TaggedDocument(gensim.utils.simple_preprocess(line), [i]))
+                    i += 1
+                    if i % 10000 == 0:
+                        logger.info("added %d lines" % i)
 
-        max_epochs = 100
-        alpha = 0.025
-        
-        print(train_corpus)
-        
-        model = gensim.models.doc2vec.Doc2Vec(vector_size=400, min_count=2, epochs=55)
-        model.build_vocab(train_corpus)
-        for epoch in range(max_epochs):
-            print('iteration {0}'.format(epoch))
-            model.train(train_corpus, total_examples=model.corpus_count, epochs=model.epochs)
-            # decrease the learning rate
-            model.alpha -= 0.0002
-            # fix the learning rate, no decay
-            model.min_alpha = model.alpha
+        logger.info("built train_corpus of length %d" % len(train_corpus))
+        # print(train_corpus)
+
+        epochs = 20  # typically 10~20
+        model = gensim.models.doc2vec.Doc2Vec(train_corpus, vector_size=300, min_count=2, epochs=epochs)
         model.save(save_path)
-        #model = gensim.models.Doc2Vec.load(save_path)
-        #docvecs = model.docvecs
-        #print (docvecs[3])
+
         return model
 
-if __name__ == "__main__":
-    main()
 

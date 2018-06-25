@@ -5,7 +5,7 @@ from .new_svm import SVM
 from .lightgbm import LightGBM
 from .lstm import LSTM
 
-__all__ = ('NaiveBayes', 'SVM', 'LightGBM')
+__all__ = ('NaiveBayes', 'SVM', 'LightGBM', 'LSTM')
 
 
 def get_model(name):

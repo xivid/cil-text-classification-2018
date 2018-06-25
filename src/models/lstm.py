@@ -13,7 +13,7 @@ from keras.layers import LSTM
 
 logger = logging.getLogger("LSTM")
 
-class SVM(BaseModel):
+class LSTM(BaseModel):
     def __init__(self, data_source, save_path=None, kernel='linear', penalty=1.0, valid_size=0.33):
         BaseModel.__init__(self, data_source, save_path)
         self.valid_size = valid_size
@@ -37,7 +37,6 @@ class SVM(BaseModel):
         filepath = "./models/lstm-{epoch:02d}-{loss:0.3f}-{acc:0.3f}-{val_loss:0.3f}-{val_acc:0.3f}.hdf5"
         checkpoint = ModelCheckpoint(filepath, monitor="loss", verbose=1, save_best_only=True, mode='min')
         reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=2, min_lr=0.000001)
-        print model.summary()
         model.fit(X_train, y_train, batch_size=128, epochs=5, validation_split=0.1, shuffle=True, callbacks=[checkpoint, reduce_lr])
         
         logger.info("Trained model: " + str(self.model))

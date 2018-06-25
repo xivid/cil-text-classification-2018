@@ -15,7 +15,7 @@ def get_model(name):
         return SVM
     elif name == 'LightGBM':
         return LightGBM
-    elif name == 'LSTM'
+    elif name == 'LSTM':
         return LSTM
     else:
         raise NotImplementedError("No model called \"%s\"!" % name)

@@ -5,6 +5,11 @@ from sklearn.svm import SVC
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 import logging
+from keras.models import Sequential, load_model
+from keras.layers import Dense, Dropout, Activation
+from keras.layers import Embedding
+from keras.callbacks import ModelCheckpoint, ReduceLROnPlateau
+from keras.layers import LSTM
 
 logger = logging.getLogger("LSTM")
 

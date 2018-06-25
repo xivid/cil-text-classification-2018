@@ -59,9 +59,9 @@ class Word2VecEmbedding(BaseDataSource):
                         maxLen = len(splitted)
                     sentences.append(splitted)
 
-        logger.info("Starting word2vec")
-        feature_dimensions = 400
-        model = Word2Vec(sentences, size=feature_dimensions, iter=15)
+        logger.info("Training word2vec")
+        feature_dimensions = 300
+        model = Word2Vec(sentences, size=feature_dimensions, iter=20)
         model.wv.save_word2vec_format(save_path)
 
         return model

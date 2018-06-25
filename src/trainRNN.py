@@ -5,11 +5,11 @@ import tensorflow as tf
 import numpy as np
 from gensim.models import KeyedVectors
 from utils.feature_extraction import token_array
-pos_src = '../data/train_pos.txt'
-neg_src = '../data/train_pos.txt'
-test_src = '../data/test_data_stripped.txt'
-out_dir = '../output'
-embedding_src = 'datasources/word2vec_embedding.txt'
+pos_src = '../data/twitter-datasets/train_pos_full.txt'
+neg_src = '../data/twitter-datasets/train_neg_full.txt'
+test_src = '../data/twitter-datasets/test_data.txt'
+out_dir = '../output/models/RNN/'
+embedding_src = '../data/glove.twitter.27B/glove.twitter.27B.200d.word2vec.txt'
 
 embedding = KeyedVectors.load_word2vec_format(embedding_src)
 X, Y, testX, max_tok_count = token_array(pos_src, neg_src, test_src)

@@ -19,6 +19,6 @@ setup(
             'sklearn',
             'gensim',
             'lightgbm',
-            # 'tensorflow',
+            'tensorflow',
         ],
 )

@@ -66,6 +66,51 @@ def sparse_matrix(text_files=[pos_src, neg_src]):
     
     return X
 
+def token_array(pos_src, neg_src, test_src):
+    logger = logging.getLogger("vector_array")
+    
+    X = []
+    Y = []
+    max_tok_count = 0
+    for fileno, fn in enumerate([pos_src, neg_src]):
+        with open(fn) as f:
+            logger.info("processing " + fn)
+            lines = f.readlines()
+            num_tweet = len(lines)
+            counter = 1
+            for idx, line in enumerate(lines):
+                tokens = line.split()
+                num_tokens = len(tokens)
+                if num_tokens > max_tok_count:
+                    max_tok_count = num_tokens
+                if counter % 10000 == 0:
+                    logger.info("read %d samples" % counter)
+                counter += 1
+                X.append(tokens)
+            if fileno == 0:
+                Y = np.array([1] * num_tweet)
+            else:
+                Y = np.concatenate((Y, [-1]*num_tweet))
+    testX = []
+    with open(test_src) as f:
+        logger.info("processing " + fn)
+        lines = f.readlines()
+        num_tweet = len(lines)
+        counter = 1
+        for idx, line in enumerate(lines):
+            tokens = line.split()
+            num_tokens = len(tokens)
+            if num_tokens > max_tok_count:
+                max_tok_count = num_tokens
+            if counter % 10000 == 0:
+                logger.info("read %d samples" % counter)
+            counter += 1
+            testX.append(tokens)
+    print(max_tok_count)
+    # Fill in to fixed size
+    X = np.array(X)
+    testX = np.array(testX)
+    return X, Y, testX, max_tok_count
 
 # build the tweet embedding as the average vector of the word embeddings
 def average_vector(pos_src, neg_src, test_src, embedding): # embedding: KeyedVectors type

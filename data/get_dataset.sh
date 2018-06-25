@@ -12,7 +12,7 @@ unzip -o twitter-datasets.zip
 
 echo "Downloading Pre-Trained GloVe Word Embeddings for Twitter..."
 wget -N http://nlp.stanford.edu/data/glove.twitter.27B.zip
-unzip -o glove.twitter.27B.zip
+unzip -o glove.twitter.27B.zip -d glove.twitter.27B
 
 echo "Converting GloVe to Word2Vec..."
 python3 glove_to_word2vec.py glove.twitter.27B/glove.twitter.27B.50d.txt glove.twitter.27B/glove.twitter.27B.50d.word2vec.txt

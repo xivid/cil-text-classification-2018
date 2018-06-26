@@ -231,7 +231,7 @@ try:
             if current_accuracy > best_accuracy:
             # Evaluate test data
                 best_accuracy = current_accuracy
-                submission_file = "../output/models/RNN/kaggle_%s.csv" % datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+                submission_file = "../output/models/RNN/kaggle_%s_accu%f.csv" % (datetime.datetime.now().strftime("%Y%m%d%H%M%S"), best_accuracy)
                 print("New best accuracy, generating submission file: %s" % submission_file)
                 with open(submission_file, "w+") as f:
                     testX_t = [testX[i:i+val_split] for i in range(0, len(testX), val_split)]

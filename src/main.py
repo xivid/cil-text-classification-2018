@@ -19,11 +19,8 @@ if __name__ == "__main__":
     # Set global log level
     parser = argparse.ArgumentParser(description='Train a text classification model.')
     parser.add_argument('-m', '--model', type=str, help='training model', choices=models.__all__, required=True)
-    # TODO: add necessary arguments required by models
-    # e.g. parser.add_argument('-lr', type=float, help="learning rate", default=0.1)
     parser.add_argument('-d', '--datasource', type=str, help='data source (features used in the model)',
                         choices=datasources.__all__, required=True)
-    # TODO: add necessary arguments required by data sources
     parser.add_argument('-p', type=str, help='Path to positive training dataset', default=pos_default)
     parser.add_argument('-n', type=str, help='Path to negative training dataset', default=neg_default)
     parser.add_argument('-t', type=str, help='Path to test dataset', default=test_default)
@@ -51,24 +48,29 @@ if __name__ == "__main__":
     logger.info("\tusing positive training set: %s", pos_src)
     logger.info("\tusing negative training set: %s", neg_src)
     logger.info("\tusing test set: %s", test_src)
+    if embedding_src != "":
+        logger.info("\tusing pre-trained word embeddings: %s", embedding_src)
     logger.info("\tlogging verbosity: %s", args.v)
 
     # set working directory
     if not os.getcwd().endswith("/src"):
         os.chdir("src")
 
-    ### general pipeline here
-    # maybe do some preprocessing for the raw training data here [TODO]
-    # added by YZF: I'd suggest doing such preprocessing (if any) in DataSource, e.g. add some preprocessing methods in BaseDataSource
-
     # Pre-process data source
     logger.info("Pre-processing data source " + datasource_name)
-    data_source = datasources.get_datasource(datasource_name)(
-        pos_src=pos_src,
-        neg_src=neg_src,
-        test_src=test_src,
-        embedding_src=embedding_src  # TODO: only pass this parameter when it is really a word embedding data source
-    )
+    if embedding_src != "":  # pre-trained embeddings provided
+        data_source = datasources.get_datasource(datasource_name)(
+            pos_src=pos_src,
+            neg_src=neg_src,
+            test_src=test_src,
+            embedding_src=embedding_src
+        )
+    else:
+        data_source = datasources.get_datasource(datasource_name)(
+            pos_src=pos_src,
+            neg_src=neg_src,
+            test_src=test_src
+        )
 
     # Train the model
     logger.info("Training " + model_name)
@@ -80,6 +82,6 @@ if __name__ == "__main__":
     # Output training and validation error
     logger.info("Training finished with accuracy %f, validation accuracy %f" % (model.training_accuracy, model.validation_accuracy))
 
-    # Evaluate for Kaggle submission (need to be modified) TODO
+    # Evaluate for Kaggle submission
     logger.info("Evaluating for kaggle submission")
-    model.evaluate_for_kaggle("../output/models/%s/kaggle_%s.csv" % (model_name, datetime.datetime.now().strftime("%Y%m%d%H%M%S")))
+    model.evaluate_for_kaggle("../output/models/%s/kaggle_final_%s.csv" % (model_name, datetime.datetime.now().strftime("%Y%m%d%H%M%S")))

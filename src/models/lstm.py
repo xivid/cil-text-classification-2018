@@ -14,30 +14,32 @@ from keras.layers import LSTM
 logger = logging.getLogger("LSTM")
 
 class LSTM(BaseModel):
-    def __init__(self, data_source, save_path=None, kernel='linear', penalty=1.0, valid_size=0.33):
+    def __init__(self, data_source, save_path=None, kernel='linear', penalty=1.0, valid_size=0.20):
         BaseModel.__init__(self, data_source, save_path)
         self.valid_size = valid_size
+        self.model = None
     
     
     def train(self):
         logger.info("Fitting LSTM model...")
-        
+
+        # TODO: process from RawText(BaseDataSource)
         X_train, X_val, y_train, y_val = train_test_split(self.data_source.X, self.data_source.Y, test_size=self.valid_size, random_state=42)
         
-        model = Sequential()
-        model.add(Embedding(vocab_size + 1, dim, weights=[embedding_matrix], input_length=max_length))
-        model.add(Dropout(0.4))
-        model.add(LSTM(128))
-        model.add(Dense(64))
-        model.add(Dropout(0.5))
-        model.add(Activation('relu'))
-        model.add(Dense(1))
-        model.add(Activation('sigmoid'))
-        model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
-        filepath = "./models/lstm-{epoch:02d}-{loss:0.3f}-{acc:0.3f}-{val_loss:0.3f}-{val_acc:0.3f}.hdf5"
+        self.model = Sequential()
+        self.model.add(Embedding(vocab_size + 1, dim, weights=[embedding_matrix], input_length=max_length))
+        self.model.add(Dropout(0.4))
+        self.model.add(LSTM(128))
+        self.model.add(Dense(64))
+        self.model.add(Dropout(0.5))
+        self.model.add(Activation('relu'))
+        self.model.add(Dense(1))
+        self.model.add(Activation('sigmoid'))
+        self.model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+        filepath = "../output/models/LSTM/lstm-{epoch:02d}-{loss:0.3f}-{acc:0.3f}-{val_loss:0.3f}-{val_acc:0.3f}.hdf5"
         checkpoint = ModelCheckpoint(filepath, monitor="loss", verbose=1, save_best_only=True, mode='min')
         reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=2, min_lr=0.000001)
-        model.fit(X_train, y_train, batch_size=128, epochs=5, validation_split=0.1, shuffle=True, callbacks=[checkpoint, reduce_lr])
+        self.model.fit(X_train, y_train, batch_size=128, epochs=5, validation_split=0.1, shuffle=True, callbacks=[checkpoint, reduce_lr])
         
         logger.info("Trained model: " + str(self.model))
         
@@ -56,6 +58,6 @@ class LSTM(BaseModel):
     
     def predict(self, X):
         X = check_array(X)
-        pred = model.predict(X, batch_size=128, verbose=1)
+        pred = self.model.predict(X, batch_size=128, verbose=1)
         return pred
 

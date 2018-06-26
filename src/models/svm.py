@@ -1,149 +1,44 @@
-from core import BaseModel, BaseMLModel
-import numpy as np
+from core import BaseModel
+from sklearn.utils.validation import check_array
 from sklearn.svm import SVC
-from sklearn.multiclass import OneVsRestClassifier
-from sklearn.ensemble import BaggingClassifier
-from datasources import Glove
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+import logging
 
+logger = logging.getLogger("SVM")
 
-# TODO: rewrite this class to use preprocess() and yield_one_sample() of class GloVe, don't do data preprocessing here
 class SVM(BaseModel):
-    def __init__(self):
-        BaseModel.__init__(self)
-
-        """ Word embedding
-        """
-        self.word_embedding = None
-
-        """ X
-            GloVe average vector
-        """
-        self.X = None
-
-        """ Y
-            Class labels. 1 for positive, -1 for negative.
-        """
-        self.Y = None
-
-        """ model
-            Trained model.
-        """
-        self.model = None
-
-    def mean_vector(self, pos_src, neg_src):
-        data = np.load('embeddings.npz') 
-        we = data['we']
-        print(we)
-
-        self.word_embedding = {}
-        #load we and assign vector to each word
-        with open('vocab_cut.txt') as f:
-            for idx, line in enumerate(f):
-                self.word_embedding[line.rstrip()] = we[idx]
-        #print(word_embedding)
-
-        avg = []
-        y = []
-        counter = 0
-        is_positive = 1
-        for fn in [pos_src, neg_src]:
-            with open(fn) as f:
-                n_lines = 0
-                for line in f:
-                    n_lines += 1
-                    tokens = line.split()
-                    avg.append(np.zeros(20))
-
-                    num_tokens = 0
-                    for t in tokens:
-                        try:
-                            avg[counter] += self.word_embedding[t]
-                            num_tokens += 1
-                        except:
-                            continue
-                    if (num_tokens != 0):
-                        np.true_divide(avg[counter], num_tokens)
-                    counter += 1
-                y += n_lines * [is_positive]
-            is_positive -= 2
-        print("retunring values")
-        return {'x':avg, 'y':y} 
-
-    def load_training_data(self, pos_src, neg_src):
-        print("loading cooccurrence matrix")
-        """with open('cooc.pkl', 'rb') as f:
-            cooc = pickle.load(f)
-        print("{} nonzero entries".format(cooc.nnz))
-
-        nmax = 100
-        print("using nmax =", nmax, ", cooc.max() =", cooc.max())
-
-        print("initializing embeddings");
-        print("cooc shape 0: ", cooc.shape[0], "cooc shape 1: ", cooc.shape[1])
-        embedding_dim = 20
-        xs = np.random.normal(size=(cooc.shape[0], embedding_dim))
-        ys = np.random.normal(size=(cooc.shape[1], embedding_dim))
-
-        eta = 0.001
-        alpha = 3 / 4
-
-        epochs = 20
-
-        for epoch in range(epochs):
-            print("epoch {}".format(epoch))
-            for ix, jy, n in zip(cooc.row, cooc.col, cooc.data):
-                logn = np.log(n)
-                fn = min(1.0, (n / nmax) ** alpha)
-                x, y = xs[ix, :], ys[jy, :]
-                scale = 2 * eta * fn * (logn - np.dot(x, y))
-                xs[ix, :] += scale * y
-                ys[jy, :] += scale * x
-
-        we = xs + ys
-        np.savez('embeddings', we=we)"""
-        
-
-        # build sparse matrix
-        result = self.mean_vector(pos_src, neg_src)
-        print("get result")
-        self.X = result['x']
-        self.Y = np.array(result['y'])
+    def __init__(self, data_source, save_path=None, kernel='linear', penalty=1.0, valid_size=0.33):
+        BaseModel.__init__(self, data_source, save_path)
+        self.valid_size = valid_size
+        self.model = SVC(C=penalty,
+                         kernel=kernel,
+                         class_weight="balanced",
+                         verbose=True)
     
-    def train(self, pos_src, neg_src):
-        self.load_training_data(pos_src, neg_src)
-        print("train")
-        # n_estimators = 10
-        clf = SVC(C=1e3, kernel='rbf', class_weight='balanced')
-        # clf = OneVsRestClassifier(BaggingClassifier(SVC(kernel='linear', probability=True, class_weight='balanced'),
-        #                                            max_samples=1.0 / n_estimators, n_estimators=n_estimators), n_jobs=-1)
+    def train(self):
+        logger.info("Fitting SVM model...")
 
-        print("svm create")
-        clf.fit(self.X, self.Y)        
-        print("svm fit")
-        self.model = clf
-        print("Trained model: " + str(self.model))
+        X_train, X_val, y_train, y_val = train_test_split(self.data_source.X, self.data_source.Y, test_size=self.valid_size, random_state=42)
 
-    def predict(self, test_src):
-        if self.model is None:
-            raise RuntimeError("No trained model! (saving model not implemented yet)")
-        print("loading test data...")
-        avg = []
-        with open(test_src) as f:
-            counter = 0
-            for line in f:
-                tokens = line.split()
-                avg.append(np.zeros(20))
+        self.model = self.model.fit(X_train, y_train)
+        logger.info("Trained model: " + str(self.model))
 
-                num_tokens = 0
-                for t in tokens:
-                    if((len(t) != 1) or (t == "a") or (t == "i")):
-                        try:
-                            avg[counter] += self.word_embedding[t]
-                            num_tokens += 1
-                        except:
-                            continue
-                np.divide(avg[counter], num_tokens)
-                counter += 1
+        # save the trained model
+        # logger.info("Saving the model to " + self.save_path)
+        # pickle.dump(self.model, self.save_path)
 
-        return self.model.predict(avg)
+        # calculate errors
+        train_pred = self.predict(X_train)
+        self.training_accuracy = accuracy_score(y_train, train_pred)
+        logger.info("Training accuracy: %f" % self.training_accuracy)
+
+        val_pred = self.predict(X_val)
+        self.validation_accuracy = accuracy_score(y_val, val_pred)
+        logger.info("Validating accuracy: %f" % self.validation_accuracy)
+
+    def predict(self, X):
+        X = check_array(X)
+        pred = self.model.predict(X)
+        return pred
 

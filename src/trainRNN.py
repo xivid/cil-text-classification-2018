@@ -6,6 +6,9 @@ import numpy as np
 from gensim.models import KeyedVectors
 from utils.feature_extraction import line_list
 from utils.io import file_type
+import logging
+
+logger = logging.getLogger("RNN")
 
 pos_src = '../data/twitter-datasets/train_pos_full.txt'
 neg_src = '../data/twitter-datasets/train_neg_full.txt'

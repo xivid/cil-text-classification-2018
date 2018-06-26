@@ -67,7 +67,7 @@ def sparse_matrix(text_files=[pos_src, neg_src]):
     return X
 
 def line_list(pos_src, neg_src, test_src):
-    logger = logging.getLogger("vector_array")
+    logger = logging.getLogger("line_list")
     
     X = []
     Y = []

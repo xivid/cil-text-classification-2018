@@ -66,7 +66,7 @@ class LSTMModel():
 
         # Outputs
         with tf.name_scope("output"):
-            self.score = tf.layers.dense(final_output, units=2)
+            self.score = tf.layers.dense(final_output, units=2, activation=tf.nn.relu)
             self.predictions = tf.nn.softmax(self.score, name='predictions')
             self.class_prediction = tf.argmax(self.predictions, 1)
             
@@ -199,6 +199,7 @@ def evaluate_model(current_step):
     print("\tloss {:g}\n\tacc {:g} (stddev {:g})\n"
           "\t(Tested on the full test set)\n"
          .format(average_loss, average_accuracy, std_accuracy))
+    return average_accuracy
 
 print("Generating batches...")
 batches = batch_gen(train_X, train_Y, batch_size, n_epochs, embedding, max_tok_count)
@@ -209,6 +210,7 @@ current_step = None
 try:
     lcum = 0
     acum = 0
+    best_accuracy = -1
     for batchX, batchY, seq_len in batches:
         l, a = train_step(batchX, batchY, seq_len)
         lcum += l
@@ -223,9 +225,28 @@ try:
         if current_step % eval_every_step == 0:
             print("\nEvaluating...")
             eval_start_ms = int(time.time() * 1000)
-            evaluate_model(current_step)
+            current_accuracy = evaluate_model(current_step)
             eval_time_ms = int(time.time() * 1000) - eval_start_ms
             print("Evaluation performed in {0}ms.".format(eval_time_ms))
+            if current_accuracy > best_accuracy:
+            # Evaluate test data
+                best_accuracy = current_accuracy
+                submission_file = "../output/models/RNN/kaggle_%s.csv" % datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+                print("New best accuracy, generating submission file: %s" % submission_file)
+                with open(submission_file, "w+") as f:
+                    testX_t = [testX[i:i+val_split] for i in range(0, len(testX), val_split)]
+                    sample_no = 1
+                    for testBatch in testX_t:
+                        ret, seq_len = text2vecs(testBatch, max_tok_count, embedding)
+                        feed_dict = {
+                                model.X: ret,
+                                model.seq_len: seq_len
+                        }
+                        predictions = sess.run(model.class_prediction, feed_dict)
+                        for p in predictions:
+                            f.write("{},{}\n".format(sample_no, (1 if p == 0 else -1)))
+                            sample_no += 1
+                print("saved to %s" % submission_file)
 
         if current_step % checkpoint_every_step == 0:
             print("Save model parameters...")
@@ -245,7 +266,9 @@ try:
     print("Saved model checkpoint to {}\n".format(path))
 
     # Evaluate test data
-    with open("../output/submission_lstm.csv", "w+") as f:
+    print("Evaluating on test set")
+    submission_file = "../output/models/RNN/kaggle_final_%s.csv" % datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+    with open(submission_file, "w+") as f:
         testX = [testX[i:i+val_split] for i in range(0, len(testX), val_split)]
         sample_no = 1
         for testBatch in testX:
@@ -258,6 +281,7 @@ try:
             for p in predictions:
                 f.write("{},{}\n".format(sample_no, (1 if p == 0 else -1)))
                 sample_no += 1
+    print("Final submission file saved to " + submission_file)
 
 except KeyboardInterrupt:
     if current_step is None:

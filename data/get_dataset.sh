@@ -10,6 +10,9 @@ echo "Downloading twitter dataset..."
 wget -N "http://www.da.inf.ethz.ch/teaching/2018/CIL/material/exercise/twitter-datasets.zip"
 unzip -o twitter-datasets.zip
 
+echo "Removing Id column from test file"
+cat twitter-datasets/test_data.txt | cut -d ',' -f 2- > twitter-datasets/test_data_stripped.txt
+
 echo "Downloading Pre-Trained GloVe Word Embeddings for Twitter..."
 wget -N http://nlp.stanford.edu/data/glove.twitter.27B.zip
 unzip -o glove.twitter.27B.zip -d glove.twitter.27B

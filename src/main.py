@@ -11,7 +11,7 @@ logger = logging.getLogger("Main")
 
 pos_default = "../data/twitter-datasets/train_pos.txt"
 neg_default = "../data/twitter-datasets/train_neg.txt"
-test_default = "../data/twitter-datasets/test_data.txt"
+test_default = "../data/twitter-datasets/test_data_stripped.txt"
 # embedding_default = "../data/embeddings.npz"
 
 if __name__ == "__main__":

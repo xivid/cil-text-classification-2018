@@ -35,7 +35,7 @@ def text2vecs(X, max_tok, embedding):
 def batch_gen(X, Y, batch_size, n_epochs, embedding, max_tok):
     n_sample = len(X)
     batches_per_epoch = int(np.ceil(n_sample/batch_size))
-
+    print("[batch_gen] n_sample: {}, n_epochs: {} batches_per_epoch: {}".format(n_sample, n_epochs, batches_per_epoch))
     for epoch in range(n_epochs):
         shuffled_idx = np.random.permutation(np.arange(n_sample))
         shuffled_X = [X[i] for i in shuffled_idx]
@@ -63,7 +63,7 @@ class LSTMModel():
                 sequence_length=self.seq_len,
                 swap_memory=True)
         #print(lstm_final_state)
-        final_output = tf.layers.dropout(lstm_final_state.h, rate=0.15)
+        final_output = tf.layers.dropout(lstm_final_state.h, rate=0.5)
         #final_output = lstm_final_state.h
 
         # Outputs
@@ -83,7 +83,7 @@ class LSTMModel():
 val_samples = 10000
 val_split = 50
 n_epochs = 20
-batch_size = 64
+batch_size = 1000
 learning_rate = 0.001 # 1e-4
 eval_every_step = 1000
 output_every_step = 50
@@ -236,6 +236,7 @@ try:
                 submission_file = "../output/models/RNN/kaggle_%s_accu%f.csv" % (datetime.datetime.now().strftime("%Y%m%d%H%M%S"), best_accuracy)
                 print("New best accuracy, generating submission file: %s" % submission_file)
                 with open(submission_file, "w+") as f:
+                    f.write("Id,Prediction\n")
                     testX_t = [testX[i:i+val_split] for i in range(0, len(testX), val_split)]
                     sample_no = 1
                     for testBatch in testX_t:
@@ -271,6 +272,7 @@ try:
     print("Evaluating on test set")
     submission_file = "../output/models/RNN/kaggle_final_%s.csv" % datetime.datetime.now().strftime("%Y%m%d%H%M%S")
     with open(submission_file, "w+") as f:
+        f.write("Id,Prediction\n")
         testX = [testX[i:i+val_split] for i in range(0, len(testX), val_split)]
         sample_no = 1
         for testBatch in testX:

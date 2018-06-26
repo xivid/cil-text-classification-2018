@@ -5,18 +5,13 @@ import tensorflow as tf
 import numpy as np
 from gensim.models import KeyedVectors
 from utils.feature_extraction import line_list
-pos_src = '../data/train_pos.txt'
-neg_src = '../data/train_neg.txt'
-test_src = '../data/test_data_stripped.txt'
-out_dir = '../output'
-embedding_src = 'datasources/word2vec_embedding.txt'
-=======
-from utils.feature_extraction import token_array
+
 pos_src = '../data/twitter-datasets/train_pos_full.txt'
 neg_src = '../data/twitter-datasets/train_neg_full.txt'
-test_src = '../data/twitter-datasets/test_data.txt'
+test_src = '../data/test_data_stripped.txt'
 out_dir = '../output/models/RNN/'
-embedding_src = '../data/glove.twitter.27B/glove.twitter.27B.200d.word2vec.txt'
+#embedding_src = '../data/glove.twitter.27B/glove.twitter.27B.200d.word2vec.txt'
+embedding_src = 'datasources/word2vec_embedding.txt'
 
 print("Loading word2vec embeddings...")
 embedding = KeyedVectors.load_word2vec_format(embedding_src)
@@ -57,7 +52,7 @@ class LSTMModel():
         self.X = tf.placeholder(tf.float32, [None, max_tok, embedding_dim], name="X")
         self.seq_len = tf.placeholder(tf.int32, [None], name="seq_len")
         self.Y = tf.placeholder(tf.float32, [None, 2], name="Y")
-        lstm_cells = tf.nn.rnn_cell.LSTMCell(512)
+        lstm_cells = tf.nn.rnn_cell.LSTMCell(32)
         _, lstm_final_state = tf.nn.dynamic_rnn(
                 cell=lstm_cells,
                 inputs=self.X,
@@ -84,7 +79,7 @@ class LSTMModel():
 # Hyperperameters
 val_samples = 10000
 val_split = 50
-n_epochs = 20
+n_epochs = 1
 batch_size = 64
 learning_rate = 0.001 # 1e-4
 eval_every_step = 1000

@@ -52,7 +52,7 @@ class LSTMModel():
         self.X = tf.placeholder(tf.float32, [None, max_tok, embedding_dim], name="X")
         self.seq_len = tf.placeholder(tf.int32, [None], name="seq_len")
         self.Y = tf.placeholder(tf.float32, [None, 2], name="Y")
-        lstm_cells = tf.nn.rnn_cell.LSTMCell(32)
+        lstm_cells = tf.nn.rnn_cell.LSTMCell(512)
         _, lstm_final_state = tf.nn.dynamic_rnn(
                 cell=lstm_cells,
                 inputs=self.X,
@@ -79,7 +79,7 @@ class LSTMModel():
 # Hyperperameters
 val_samples = 10000
 val_split = 50
-n_epochs = 1
+n_epochs = 20
 batch_size = 64
 learning_rate = 0.001 # 1e-4
 eval_every_step = 1000

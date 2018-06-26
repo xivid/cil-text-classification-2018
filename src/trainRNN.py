@@ -4,34 +4,35 @@ import datetime
 import tensorflow as tf
 import numpy as np
 from gensim.models import KeyedVectors
-from utils.feature_extraction import token_array
+from utils.feature_extraction import line_list
 pos_src = '../data/train_pos.txt'
-neg_src = '../data/train_pos.txt'
+neg_src = '../data/train_neg.txt'
 test_src = '../data/test_data_stripped.txt'
 out_dir = '../output'
 embedding_src = 'datasources/word2vec_embedding.txt'
 
 embedding = KeyedVectors.load_word2vec_format(embedding_src)
-X, Y, testX, max_tok_count = token_array(pos_src, neg_src, test_src)
+X, Y, testX, max_tok_count = line_list(pos_src, neg_src, test_src)
 Y = np.array([[1, 0] if i == 1 else [0, 1] for i in Y], dtype=np.float32)
 
 def text2vecs(X, max_tok, embedding):
-    ret = np.zeros((X.shape[0], max_tok, embedding.vector_size), dtype=np.float32)
-    seq_len = np.zeros(X.shape[0], dtype=np.int32)
+    ret = np.zeros((len(X), max_tok, embedding.vector_size), dtype=np.float32)
+    seq_len = np.zeros(len(X), dtype=np.int32)
     for i, line in enumerate(X):
-        seq_len[i] = len(line)
-        for j, token in enumerate(line):
+        tokens = line.split()
+        seq_len[i] = len(tokens)
+        for j, token in enumerate(tokens):
             if token in embedding.wv.vocab:
                 ret[i][j] = embedding.wv[token]
     return ret, seq_len
 
 def batch_gen(X, Y, batch_size, n_epochs, embedding, max_tok):
-    n_sample = X.shape[0]
+    n_sample = len(X)
     batches_per_epoch = int(np.ceil(n_sample/batch_size))
 
     for epoch in range(n_epochs):
         shuffled_idx = np.random.permutation(np.arange(n_sample))
-        shuffled_X = X[shuffled_idx]
+        shuffled_X = [X[i] for i in shuffled_idx]
         shuffled_Y = Y[shuffled_idx]
         
         start_idx = 0
@@ -45,18 +46,18 @@ def batch_gen(X, Y, batch_size, n_epochs, embedding, max_tok):
 
 class LSTMModel():
     def __init__(self, embedding_dim, max_tok):
-        self.X = tf.placeholder(tf.float32, [None, max_tok, embedding_dim], name="input_X")
+        self.X = tf.placeholder(tf.float32, [None, max_tok, embedding_dim], name="X")
         self.seq_len = tf.placeholder(tf.int32, [None], name="seq_len")
-        self.Y = tf.placeholder(tf.float32, [None, 2], name="input_Y")
-        lstm_cells = tf.nn.rnn_cell.LSTMCell(128)
+        self.Y = tf.placeholder(tf.float32, [None, 2], name="Y")
+        lstm_cells = tf.nn.rnn_cell.LSTMCell(512)
         _, lstm_final_state = tf.nn.dynamic_rnn(
                 cell=lstm_cells,
                 inputs=self.X,
                 dtype=tf.float32,
-                #sequence_length=self.seq_len,
+                sequence_length=self.seq_len,
                 swap_memory=True)
         #print(lstm_final_state)
-        final_output = tf.layers.dropout(lstm_final_state.h, rate=0.5)
+        final_output = tf.layers.dropout(lstm_final_state.h, rate=0.15)
         #final_output = lstm_final_state.h
 
         # Outputs
@@ -73,9 +74,9 @@ class LSTMModel():
             self.accuracy = tf.reduce_mean(tf.cast(self.correct_pred, "float"), name="accuracy")
 
 # Hyperperameters
-val_samples = 10000
+val_samples = 30000
 val_split = 50
-n_epochs = 100
+n_epochs = 20
 batch_size = 64
 learning_rate = 1e-4
 eval_every_step = 1000
@@ -83,12 +84,13 @@ output_every_step = 50
 checkpoint_every_step = 1000
 
 # Split into training and validation
-shuffled_idx = np.random.permutation(np.arange(X.shape[0]))
-shuffled_X = X[shuffled_idx]
+shuffled_idx = np.random.permutation(np.arange(len(X)))
+shuffled_X = [X[i] for i in shuffled_idx]
 shuffled_Y = Y[shuffled_idx]
 
-val_X = np.split(shuffled_X[:val_samples], val_split)
-val_Y = np.split(shuffled_Y[:val_samples], val_split)
+val_X = [shuffled_X[i:min(i+val_split, val_samples)] for i in range(0, val_samples, val_split)]
+print(len(val_X))
+val_Y = np.split(shuffled_Y[:val_samples], val_samples/val_split)
 train_X = shuffled_X[val_samples:]
 train_Y = shuffled_Y[val_samples:]
 
@@ -103,10 +105,12 @@ model = LSTMModel(embedding_dim, max_tok_count)
 
 global_step = tf.Variable(1, name="global_step", trainable=False)
 optimizer = tf.train.AdamOptimizer(learning_rate)
-gvs = optimizer.compute_gradients(model.loss)
-capped_gvs = [(tf.clip_by_value(grad, -5., 5.), var) for grad, var in gvs]
-train_op = optimizer.apply_gradients(capped_gvs, global_step=global_step)
-#train_op = optimizer.minimize(model.loss, global_step=global_step)
+
+# Gradient clipping
+#gvs = optimizer.compute_gradients(model.loss)
+#capped_gvs = [(tf.clip_by_value(grad, -5., 5.), var) for grad, var in gvs]
+#train_op = optimizer.apply_gradients(capped_gvs, global_step=global_step)
+train_op = optimizer.minimize(model.loss, global_step=global_step)
 # 'compute_gradients' returns a list of (gradient, variable) pairs.
 
 # Summary
@@ -170,10 +174,10 @@ def val_step(x_batch, y_batch):
 
 def evaluate_model(current_step):
     """Evaluates model on a dev set."""
-    losses = np.empty(val_split)
-    accuracies = np.empty(val_split)
+    losses = np.zeros(len(val_X))
+    accuracies = np.zeros(len(val_X))
 
-    for i in range(val_split):
+    for i in range(len(val_X)):
         loss, accuracy = val_step(val_X[i], val_Y[i])
         losses[i] = loss
         accuracies[i] = accuracy
@@ -233,8 +237,8 @@ try:
     print("Saved model checkpoint to {}\n".format(path))
 
     # Evaluate test data
-    with open("submission.csv", "w+") as f:
-        testX = np.split(testX, val_split)
+    with open("../output/submission_lstm.csv", "w+") as f:
+        testX = [testX[i:i+val_split] for i in range(0, len(testX), val_split)]
         sample_no = 1
         for testBatch in testX:
             ret, seq_len = text2vecs(testBatch, max_tok_count, embedding)
@@ -242,7 +246,7 @@ try:
                     model.X: ret,
                     model.seq_len: seq_len
             }
-            predictions = sess.run([model.class_prediction], feed_dict)
+            predictions = sess.run(model.class_prediction, feed_dict)
             for p in predictions:
                 f.write("{},{}\n".format(sample_no, (1 if p == 0 else -1)))
                 sample_no += 1

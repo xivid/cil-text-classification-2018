@@ -66,7 +66,7 @@ def sparse_matrix(text_files=[pos_src, neg_src]):
     
     return X
 
-def token_array(pos_src, neg_src, test_src):
+def line_list(pos_src, neg_src, test_src):
     logger = logging.getLogger("vector_array")
     
     X = []
@@ -86,7 +86,7 @@ def token_array(pos_src, neg_src, test_src):
                 if counter % 10000 == 0:
                     logger.info("read %d samples" % counter)
                 counter += 1
-                X.append(tokens)
+                X.append(line)
             if fileno == 0:
                 Y = np.array([1] * num_tweet)
             else:
@@ -97,6 +97,7 @@ def token_array(pos_src, neg_src, test_src):
         lines = f.readlines()
         num_tweet = len(lines)
         counter = 1
+        listX = []
         for idx, line in enumerate(lines):
             tokens = line.split()
             num_tokens = len(tokens)
@@ -105,11 +106,8 @@ def token_array(pos_src, neg_src, test_src):
             if counter % 10000 == 0:
                 logger.info("read %d samples" % counter)
             counter += 1
-            testX.append(tokens)
-    print(max_tok_count)
+            testX.append(line)
     # Fill in to fixed size
-    X = np.array(X)
-    testX = np.array(testX)
     return X, Y, testX, max_tok_count
 
 # build the tweet embedding as the average vector of the word embeddings

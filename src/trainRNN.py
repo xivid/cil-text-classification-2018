@@ -10,7 +10,15 @@ neg_src = '../data/train_neg.txt'
 test_src = '../data/test_data_stripped.txt'
 out_dir = '../output'
 embedding_src = 'datasources/word2vec_embedding.txt'
+=======
+from utils.feature_extraction import token_array
+pos_src = '../data/twitter-datasets/train_pos_full.txt'
+neg_src = '../data/twitter-datasets/train_neg_full.txt'
+test_src = '../data/twitter-datasets/test_data.txt'
+out_dir = '../output/models/RNN/'
+embedding_src = '../data/glove.twitter.27B/glove.twitter.27B.200d.word2vec.txt'
 
+print("Loading word2vec embeddings...")
 embedding = KeyedVectors.load_word2vec_format(embedding_src)
 X, Y, testX, max_tok_count = line_list(pos_src, neg_src, test_src)
 Y = np.array([[1, 0] if i == 1 else [0, 1] for i in Y], dtype=np.float32)
@@ -74,27 +82,28 @@ class LSTMModel():
             self.accuracy = tf.reduce_mean(tf.cast(self.correct_pred, "float"), name="accuracy")
 
 # Hyperperameters
-val_samples = 30000
+val_samples = 10000
 val_split = 50
 n_epochs = 20
 batch_size = 64
-learning_rate = 1e-4
+learning_rate = 0.001 # 1e-4
 eval_every_step = 1000
 output_every_step = 50
 checkpoint_every_step = 1000
 
 # Split into training and validation
+print("Splitting dataset into training and validation...")
 shuffled_idx = np.random.permutation(np.arange(len(X)))
 shuffled_X = [X[i] for i in shuffled_idx]
 shuffled_Y = Y[shuffled_idx]
 
 val_X = [shuffled_X[i:min(i+val_split, val_samples)] for i in range(0, val_samples, val_split)]
-print(len(val_X))
 val_Y = np.split(shuffled_Y[:val_samples], val_samples/val_split)
 train_X = shuffled_X[val_samples:]
 train_Y = shuffled_Y[val_samples:]
 
 # RNN
+print("Building model...")
 session_conf = tf.ConfigProto(
     allow_soft_placement=True,
     log_device_placement=False)
@@ -116,7 +125,7 @@ train_op = optimizer.minimize(model.loss, global_step=global_step)
 # Summary
 out_dir_full = os.path.abspath(os.path.join(out_dir, 'runs'))
 if not os.path.exists(out_dir_full):
-    os.mkdir(out_dir_full)
+    os.makedirs(out_dir_full)
 # Summaries for loss and accuracy
 loss_summary = tf.summary.scalar("loss", model.loss)
 acc_summary = tf.summary.scalar("accuracy", model.accuracy)
@@ -144,6 +153,7 @@ if not os.path.exists(checkpoint_dir):
 saver = tf.train.Saver(tf.global_variables())
 
 # Initialize all variables
+print("Initializing model variables...")
 sess.run(tf.global_variables_initializer())
 
 def train_step(x_batch, y_batch, seq_len):
@@ -194,9 +204,11 @@ def evaluate_model(current_step):
           "\t(Tested on the full test set)\n"
          .format(average_loss, average_accuracy, std_accuracy))
 
+print("Generating batches...")
 batches = batch_gen(train_X, train_Y, batch_size, n_epochs, embedding, max_tok_count)
 
 # Training
+print("Training started")
 current_step = None
 try:
     lcum = 0

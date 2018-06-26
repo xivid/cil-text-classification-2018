@@ -5,6 +5,7 @@ import tensorflow as tf
 import numpy as np
 from gensim.models import KeyedVectors
 from utils.feature_extraction import line_list
+from utils.io import file_type
 
 pos_src = '../data/twitter-datasets/train_pos_full.txt'
 neg_src = '../data/twitter-datasets/train_neg_full.txt'
@@ -15,7 +16,8 @@ embedding_src = '../data/glove.twitter.27B/glove.twitter.27B.200d.word2vec.txt'
 #embedding_src = 'datasources/word2vec_embedding.txt'
 
 print("Loading word2vec embeddings...")
-embedding = KeyedVectors.load_word2vec_format(embedding_src)
+is_binary = file_type(embedding_src)
+embedding = KeyedVectors.load_word2vec_format(embedding_src, binary=is_binary)
 X, Y, testX, max_tok_count = line_list(pos_src, neg_src, test_src)
 Y = np.array([[1, 0] if i == 1 else [0, 1] for i in Y], dtype=np.float32)
 

@@ -71,17 +71,16 @@ class BiLSTMModel():
             sequence_length=self.seq_len,
             swap_memory=True
         )
+        
+        # compute the final outputs and final states by combining forward and backward results
+        outputs = tf.concat((outputs_fw, outputs_bw), 2)
 
-        #print(lstm_final_state)
-        # a. use the concatenation as the final output
-        # final_state = tf.concat((outputs_fw, outputs_bw), 2)
-
-        # b. use the final state as the final output
         final_state_c = tf.concat((outputs_state_fw.c, outputs_state_bw.c), 1)
         final_state_h = tf.concat((outputs_state_fw.h, outputs_state_bw.h), 1)
-        final_state = tf.contrib.rnn.LSTMStateTuple(c=final_state_c,
+        outputs_final_state = tf.contrib.rnn.LSTMStateTuple(c=final_state_c,
                                                     h=final_state_h)
-        final_output = tf.layers.dropout(final_state.h, rate=0.2)
+        
+        final_output = tf.layers.dropout(outputs_final_state.h, rate=0.25)
 
         # Outputs
         with tf.name_scope("output"):

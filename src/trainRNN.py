@@ -86,7 +86,7 @@ class LSTMModel():
 val_samples = 10000
 val_split = 50
 n_epochs = 20
-batch_size = 1000
+batch_size = 100
 learning_rate = 0.001 # 1e-4
 eval_every_step = 1000
 output_every_step = 50

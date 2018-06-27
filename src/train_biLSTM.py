@@ -78,7 +78,7 @@ class BiLSTMModel():
         final_state_c = tf.concat((outputs_state_fw.c, outputs_state_bw.c), 1)
         final_state_h = tf.concat((outputs_state_fw.h, outputs_state_bw.h), 1)
         outputs_final_state = tf.contrib.rnn.LSTMStateTuple(c=final_state_c,
-                                                    h=final_state_h)
+                                                            h=final_state_h)
         
         final_output = tf.layers.dropout(outputs_final_state.h, rate=0.25)
 

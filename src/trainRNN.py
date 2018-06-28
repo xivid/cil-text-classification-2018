@@ -12,8 +12,8 @@ logger = logging.getLogger("RNN")
 
 pos_src = '../data/twitter-datasets/train_pos_full.txt'
 neg_src = '../data/twitter-datasets/train_neg_full.txt'
-test_src = '../data/test_data_stripped.txt'
-#test_src = '../data/twitter-datasets/test_data_stripped.txt'
+#test_src = '../data/test_data_stripped.txt'
+test_src = '../data/twitter-datasets/test_data_stripped.txt'
 out_dir = '../output/models/RNN/'
 embedding_src = '../data/glove.twitter.27B/glove.twitter.27B.200d.word2vec.txt'
 #embedding_src = 'datasources/word2vec_embedding.txt'

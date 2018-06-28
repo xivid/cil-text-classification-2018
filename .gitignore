@@ -5,7 +5,7 @@ data/*
 
 # Outputs
 output/datasources
-output/models
+runs
 
 # Virtualenv
 venv

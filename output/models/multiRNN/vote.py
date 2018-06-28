@@ -1,8 +1,8 @@
 files = [
-        "kaggle_20180628202627_accu0.882000.csv",
         "kaggle_20180628202815_accu0.883800.csv",
         "kaggle_20180628220118_accu0.884100.csv",
-        "kaggle_20180628220450_accu0.884600.csv"
+        "kaggle_20180628220450_accu0.884600.csv",
+        "kaggle_20180629001108_accu0.885800.csv"
         ]
 
 scores = [0] * 10001

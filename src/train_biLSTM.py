@@ -14,9 +14,10 @@ pos_src = '../data/twitter-datasets/train_pos_full.txt'
 neg_src = '../data/twitter-datasets/train_neg_full.txt'
 #test_src = '../data/test_data_stripped.txt'
 test_src = '../data/twitter-datasets/test_data_stripped.txt'
-out_dir = '../output/models/RNN/'
-embedding_src = '../data/glove.twitter.27B/glove.twitter.27B.200d.word2vec.txt'
+out_dir = '../output/models/biLSTM/'
+# embedding_src = '../data/glove.twitter.27B/glove.twitter.27B.200d.word2vec.txt'
 # embedding_src = 'datasources/word2vec_embedding.txt'
+embedding_src = '../data/GoogleNews-vectors-negative300.bin'
 
 print("Loading word2vec embeddings...")
 is_binary = file_type(embedding_src)
@@ -80,7 +81,7 @@ class BiLSTMModel():
         outputs_final_state = tf.contrib.rnn.LSTMStateTuple(c=final_state_c,
                                                             h=final_state_h)
         
-        final_output = tf.layers.dropout(outputs_final_state.h, rate=0.25)
+        final_output = tf.layers.dropout(outputs_final_state.h, rate=0.5)
 
         # Outputs
         with tf.name_scope("output"):
@@ -99,7 +100,7 @@ class BiLSTMModel():
 val_samples = 10000
 val_split = 50
 n_epochs = 20
-batch_size = 64
+batch_size = 32
 learning_rate = 1e-4 # 1e-4
 eval_every_step = 1000
 output_every_step = 50
@@ -124,8 +125,8 @@ session_conf = tf.ConfigProto(
 sess = tf.Session(config=session_conf)
 embedding_dim = embedding.vector_size
 
-num_fw_cell = 512  # <- set the number of forward LSTM cells
-num_bw_cell = 512  # <- set the number of backward LSTM cells
+num_fw_cell = 300  # <- set the number of forward LSTM cells
+num_bw_cell = 300  # <- set the number of backward LSTM cells
 
 
 model = BiLSTMModel(embedding_dim, max_tok_count, num_fw_cell, num_bw_cell)

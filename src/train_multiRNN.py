@@ -14,7 +14,7 @@ pos_src = '../data/twitter-datasets/train_pos_full.txt'
 neg_src = '../data/twitter-datasets/train_neg_full.txt'
 #test_src = '../data/test_data_stripped.txt'
 test_src = '../data/twitter-datasets/test_data_stripped.txt'
-out_dir = '../output/models/RNN/'
+out_dir = '../output/models/multiRNN/'
 #embedding_src = '../data/glove.twitter.27B/glove.twitter.27B.200d.word2vec.txt'
 #embedding_src = 'datasources/word2vec_embedding.txt'
 embedding_src = '../data/GoogleNews-vectors-negative300.bin'
@@ -71,7 +71,7 @@ class MultiLSTMModel():
 
         num_cells = len(cell_size)
         output_final_state = states[-1]
-        final_output = tf.layers.dropout(output_final_state.h, rate=0.5)
+        final_output = tf.layers.dropout(output_final_state.h, rate=0.25)
 
         # Outputs
         with tf.name_scope("output"):
@@ -90,8 +90,8 @@ class MultiLSTMModel():
 val_samples = 10000
 val_split = 50
 n_epochs = 20
-batch_size = 100
-learning_rate = 0.001 # 1e-4
+batch_size = 32
+learning_rate = 1e-3 # 1e-4
 eval_every_step = 1000
 output_every_step = 50
 checkpoint_every_step = 1000
@@ -115,7 +115,7 @@ session_conf = tf.ConfigProto(
 sess = tf.Session(config=session_conf)
 embedding_dim = embedding.vector_size
 
-cell_size = [256, 512]  # <- create two LSTM layers with different hidden size
+cell_size = [512, 512]  # <- create two LSTM layers with different hidden size
 model = MultiLSTMModel(embedding_dim, max_tok_count, cell_size)
 
 global_step = tf.Variable(1, name="global_step", trainable=False)

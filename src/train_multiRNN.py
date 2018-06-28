@@ -12,11 +12,12 @@ logger = logging.getLogger("RNN")
 
 pos_src = '../data/twitter-datasets/train_pos_full.txt'
 neg_src = '../data/twitter-datasets/train_neg_full.txt'
-test_src = '../data/test_data_stripped.txt'
-#test_src = '../data/twitter-datasets/test_data_stripped.txt'
+#test_src = '../data/test_data_stripped.txt'
+test_src = '../data/twitter-datasets/test_data_stripped.txt'
 out_dir = '../output/models/RNN/'
 #embedding_src = '../data/glove.twitter.27B/glove.twitter.27B.200d.word2vec.txt'
-embedding_src = 'datasources/word2vec_embedding.txt'
+#embedding_src = 'datasources/word2vec_embedding.txt'
+embedding_src = '../data/GoogleNews-vectors-negative300.bin'
 
 print("Loading word2vec embeddings...")
 is_binary = file_type(embedding_src)
@@ -53,27 +54,28 @@ def batch_gen(X, Y, batch_size, n_epochs, embedding, max_tok):
             yield vecX, Y_batch, seq_len
             start_idx += batch_size
 
-class LSTMModel():
-    def __init__(self, embedding_dim, max_tok):
+class MultiLSTMModel():
+    def __init__(self, embedding_dim, max_tok, cell_size=[256, 512]):
         self.X = tf.placeholder(tf.float32, [None, max_tok, embedding_dim], name="X")
         self.seq_len = tf.placeholder(tf.int32, [None], name="seq_len")
         self.Y = tf.placeholder(tf.float32, [None, 2], name="Y")
-        lstm_cells = tf.nn.rnn_cell.LSTMCell(512)
-        _, lstm_final_state = tf.nn.dynamic_rnn(
-                cell=lstm_cells,
+
+        rnn_layers = [tf.nn.rnn_cell.LSTMCell(size) for size in cell_size]
+        multi_rnn_cell = tf.nn.rnn_cell.MultiRNNCell(rnn_layers)
+        outputs, states = tf.nn.dynamic_rnn(
+                cell=multi_rnn_cell,
                 inputs=self.X,
                 dtype=tf.float32,
                 sequence_length=self.seq_len,
                 swap_memory=True)
-        #print(lstm_final_state)
-        final_output = tf.layers.dropout(lstm_final_state.h, rate=0.5)
-        #final_output = lstm_final_state.h
+
+        num_cells = len(cell_size)
+        output_final_state = states[-1]
+        final_output = tf.layers.dropout(output_final_state.h, rate=0.5)
 
         # Outputs
         with tf.name_scope("output"):
-            hidden_dense = tf.layers.dense(final_output, units=64, activation=tf.nn.relu)
-            hidden_dense = tf.layers.dropout(hidden_dense, rate=0.4)
-            self.score = tf.layers.dense(hidden_dense, units=2, activation=tf.nn.relu)
+            self.score = tf.layers.dense(final_output, units=2, activation=tf.nn.relu)
             self.predictions = tf.nn.softmax(self.score, name='predictions')
             self.class_prediction = tf.argmax(self.predictions, 1)
             
@@ -88,11 +90,11 @@ class LSTMModel():
 val_samples = 10000
 val_split = 50
 n_epochs = 20
-batch_size = 32
-learning_rate = 1e-4 # 1e-4
-eval_every_step = 2000
-output_every_step = 100
-checkpoint_every_step = 2000
+batch_size = 100
+learning_rate = 0.001 # 1e-4
+eval_every_step = 1000
+output_every_step = 50
+checkpoint_every_step = 1000
 
 # Split into training and validation
 print("Splitting dataset into training and validation...")
@@ -113,7 +115,8 @@ session_conf = tf.ConfigProto(
 sess = tf.Session(config=session_conf)
 embedding_dim = embedding.vector_size
 
-model = LSTMModel(embedding_dim, max_tok_count)
+cell_size = [256, 512]  # <- create two LSTM layers with different hidden size
+model = MultiLSTMModel(embedding_dim, max_tok_count, cell_size)
 
 global_step = tf.Variable(1, name="global_step", trainable=False)
 optimizer = tf.train.AdamOptimizer(learning_rate)

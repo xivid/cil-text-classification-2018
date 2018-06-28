@@ -19,6 +19,8 @@ embedding_src = '../data/glove.twitter.27B/glove.twitter.27B.200d.word2vec.txt'
 #embedding_src = 'datasources/word2vec_embedding.txt'
 #embedding_src = '../data/GoogleNews-vectors-negative300.bin'
 log_src = out_dir + "log_%s.txt" % (datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
+if not os.path.exists(out_dir):
+    os.makedirs(out_dir)
 
 def printl(x):
     print(x)
@@ -97,7 +99,7 @@ val_samples = 10000
 val_split = 50
 n_epochs = 20
 batch_size = 64
-learning_rate = 1e-4 # 1e-4
+learning_rate = 1e-3 # 1e-4
 eval_every_step = 1000
 output_every_step = 50
 checkpoint_every_step = 1000

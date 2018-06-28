@@ -4,7 +4,9 @@ import datetime
 import tensorflow as tf
 import tensorflow_hub as hub
 import numpy as np
+from gensim.models import KeyedVectors
 from utils.feature_extraction import line_list
+from utils.io import file_type
 
 pos_src = '../data/twitter-datasets/train_pos_full.txt'
 neg_src = '../data/twitter-datasets/train_neg_full.txt'
@@ -12,9 +14,13 @@ test_src = '../data/test_data_stripped.txt'
 out_dir = '../output/models/RNN/'
 #embedding_src = '../data/glove.twitter.27B/glove.twitter.27B.200d.word2vec.txt'
 embedding_src = 'datasources/word2vec_embedding.txt'
+is_binary = file_type(embedding_src)
+
+print("Loading ELMO module...")
+elmo = hub.Module("https://tfhub.dev/google/elmo/2", trainable=True)
 
 print("Loading word2vec embeddings...")
-elmo = hub.Module("https://tfhub.dev/google/elmo/2", trainable=True)
+embedding = KeyedVectors.load_word2vec_format(embedding_src, binary=is_binary)
 X, Y, testX, max_tok_count = line_list(pos_src, neg_src, test_src)
 Y = np.array([[1, 0] if i == 1 else [0, 1] for i in Y], dtype=np.float32)
 
@@ -25,6 +31,21 @@ def text2array(X):
     for i, line in enumerate(X):
         seq_len[i] = len(line.split())
     return ret, seq_len
+
+def text2vecs(X, max_tok, embedding):
+    max_tok = 0
+    for line in X:
+        max_tok = max(len(line.split()), max_tok)
+
+    ret = np.zeros((len(X), max_tok, embedding.vector_size), dtype=np.float32)
+    #seq_len = np.zeros(len(X), dtype=np.int32)
+    for i, line in enumerate(X):
+        tokens = line.split()
+        #seq_len[i] = len(tokens)
+        for j, token in enumerate(tokens):
+            if token in embedding.wv.vocab:
+                ret[i][j] = embedding.wv[token]
+    return ret#, seq_len
 
 def batch_gen(X, Y, batch_size, n_epochs, embedding, max_tok):
     n_sample = len(X)
@@ -47,13 +68,21 @@ def batch_gen(X, Y, batch_size, n_epochs, embedding, max_tok):
 class LSTMModel():
     def __init__(self, embedding_dim, max_tok):
         self.X = tf.placeholder(tf.string, [None], name="X")
+        self.X_vecs = tf.placeholder(tf.float32, [None, None, embedding_dim], name="X_vecs")
         self.seq_len = tf.placeholder(tf.int32, [None], name="seq_len")
         self.Y = tf.placeholder(tf.float32, [None, 2], name="Y")
-        word_vecs = elmo(self.X, signature='default', as_dict=True)['elmo']
+
+        elmo_space = elmo(self.X, signature='default', as_dict=True)['elmo']
+        elmo_space = tf.layers.dropout(elmo_space, rate=0.4)
+        #_, elmo_seq_len, _ = context_vecs.get_shape().as_list()
+        #pad_elmo = tf.constant([[0, 0], [0, max_tok - elmo_seq_len], [0, 0]])
+        #elmo_space = tf.pad(context_vecs, pad_elmo)
+        
+        elmo_word_vecs = tf.concat([self.X_vecs, elmo_space], 2)
         lstm_cells = tf.nn.rnn_cell.LSTMCell(512)
         _, lstm_final_state = tf.nn.dynamic_rnn(
                 cell=lstm_cells,
-                inputs=word_vecs,
+                inputs=elmo_word_vecs,
                 dtype=tf.float32,
                 sequence_length=self.seq_len,
                 swap_memory=True)
@@ -79,12 +108,12 @@ class LSTMModel():
 val_samples = 10000
 val_split = 50
 n_epochs = 2
-batch_size = 64
-learning_rate = 1e-5
+batch_size = 32
+learning_rate = 1e-4
 eval_every_step = 1000
 output_every_step = 50
 checkpoint_every_step = 1000
-embedding_dim = 1024
+embedding_dim = embedding.vector_size
 
 # Split into training and validation
 print("Splitting dataset into training and validation...")
@@ -157,8 +186,10 @@ sess.run(tf.global_variables_initializer())
 
 def train_step(x_batch, y_batch, seq_len):
     """A single training step"""
+    x_vecs = text2vecs(x_batch, max_tok_count, embedding)
     feed_dict = {
       model.X: x_batch,
+      model.X_vecs: x_vecs,
       model.Y: y_batch,
       model.seq_len: seq_len
     }
@@ -172,8 +203,10 @@ def train_step(x_batch, y_batch, seq_len):
 def val_step(x_batch, y_batch):
     """Performs a model evaluation batch step on the dev set."""
     x_array, seq_len = text2array(x_batch)
+    x_vecs = text2vecs(x_batch, max_tok_count, embedding)
     feed_dict = {
       model.X: x_array,
+      model.X_vecs: x_vecs,
       model.Y: y_batch,
       model.seq_len: seq_len
     }
@@ -242,6 +275,7 @@ try:
                     sample_no = 1
                     for testBatch in testX_t:
                         ret, seq_len = text2array(testBatch)
+                        x_vecs = text2vecs(testBatch, max_tok_count, embedding)
                         feed_dict = {
                                 model.X: ret,
                                 model.seq_len: seq_len
@@ -275,8 +309,10 @@ try:
         sample_no = 1
         for testBatch in testX:
             ret, seq_len = text2array(testBatch)
+            x_vecs = text2vecs(testBatch, max_tok_count, embedding)
             feed_dict = {
                     model.X: ret,
+                    model.X_vecs: x_vecs,
                     model.seq_len: seq_len
             }
             predictions = sess.run(model.class_prediction, feed_dict)
@@ -299,8 +335,10 @@ except KeyboardInterrupt:
         sample_no = 1
         for testBatch in testX:
             ret, seq_len = text2array(testBatch)
+            x_vecs = text2vecs(testBatch, max_tok_count, embedding)
             feed_dict = {
                     model.X: ret,
+                    model.X_vecs: x_vecs,
                     model.seq_len: seq_len
             }
             predictions = sess.run(model.class_prediction, feed_dict)

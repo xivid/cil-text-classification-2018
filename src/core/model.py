@@ -4,14 +4,12 @@ class BaseModel(object):
         self.save_path = save_path
         self.training_accuracy = 0.0
         self.validation_accuracy = 0.0
+        self.output_dir = "../output/models/%s/" % self.__class__.__name__
 
     def train(self, **kwargs):
         raise NotImplementedError("The train() method need to be implemented be subclasses!")
     
     def predict(self, X):
-        raise NotImplementedError("The predict() method need to be implemented be subclasses!")
-    
-    def score(self, X, y):  # for visualization of validation error
         raise NotImplementedError("The predict() method need to be implemented be subclasses!")
 
     def set_save_path(self, save_path):

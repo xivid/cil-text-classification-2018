@@ -5,40 +5,52 @@ from sklearn.svm import SVC
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 import logging
-from keras.models import Sequential, load_model
-from keras.layers import Dense, Dropout, Activation
-from keras.layers import Embedding
-from keras.callbacks import ModelCheckpoint, ReduceLROnPlateau
-from keras.layers import LSTM
+from keras.models import Sequential, Model
+
+from keras.layers import LSTM, Dropout, Activation, Dense, Embedding
+
+from keras import optimizers
 
 logger = logging.getLogger("LSTM")
 
-class LSTM(BaseModel):
+class LSTMModel(BaseModel):
     def __init__(self, data_source, save_path=None, kernel='linear', penalty=1.0, valid_size=0.33):
         BaseModel.__init__(self, data_source, save_path)
         self.valid_size = valid_size
+        self.model = None
     
     
     def train(self):
         logger.info("Fitting LSTM model...")
+
         
+        embedding_dim = 300
+        sequence_length = 100
+
         X_train, X_val, y_train, y_val = train_test_split(self.data_source.X, self.data_source.Y, test_size=self.valid_size, random_state=42)
-        
+        print(X_train.shape)
+        max_features = 1024
+
         model = Sequential()
-        model.add(Embedding(vocab_size + 1, dim, weights=[embedding_matrix], input_length=max_length))
-        model.add(Dropout(0.4))
+        print("sequential")
+        model.add(Embedding(max_features, output_dim=400))
+        print("embedding")
+
         model.add(LSTM(128))
-        model.add(Dense(64))
+        print("lstm ")
+
         model.add(Dropout(0.5))
-        model.add(Activation('relu'))
-        model.add(Dense(1))
-        model.add(Activation('sigmoid'))
-        model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
-        filepath = "./models/lstm-{epoch:02d}-{loss:0.3f}-{acc:0.3f}-{val_loss:0.3f}-{val_acc:0.3f}.hdf5"
-        checkpoint = ModelCheckpoint(filepath, monitor="loss", verbose=1, save_best_only=True, mode='min')
-        reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=2, min_lr=0.000001)
-        model.fit(X_train, y_train, batch_size=128, epochs=5, validation_split=0.1, shuffle=True, callbacks=[checkpoint, reduce_lr])
-        
+        print("dropout ")
+
+        model.add(Dense(1, activation='sigmoid'))
+
+        model.compile(loss='binary_crossentropy',
+                  optimizer='rmsprop',
+                  metrics=['accuracy'])
+        print(model.summary())
+
+        model.fit(X_train, y_train, batch_size=128, epochs=5, validation_split=0.1, shuffle=True)
+
         logger.info("Trained model: " + str(self.model))
         
         # save the trained model
@@ -56,6 +68,6 @@ class LSTM(BaseModel):
     
     def predict(self, X):
         X = check_array(X)
-        pred = model.predict(X, batch_size=128, verbose=1)
+        pred = self.model.predict(X, batch_size=128, verbose=1)
         return pred
 

@@ -12,19 +12,14 @@ logger = logging.getLogger("RNN")
 
 pos_src = '../data/twitter-datasets/train_pos_full.txt'
 neg_src = '../data/twitter-datasets/train_neg_full.txt'
-test_src = '../data/test_data_stripped.txt'
-#test_src = '../data/twitter-datasets/test_data_stripped.txt'
-out_dir = '../output/models/RNN/'
+#test_src = '../data/test_data_stripped.txt'
+test_src = '../data/twitter-datasets/test_data_stripped.txt'
+out_dir = '../output/models/multiRNN/'
 embedding_src = '../data/glove.twitter.27B/glove.twitter.27B.200d.word2vec.txt'
 #embedding_src = 'datasources/word2vec_embedding.txt'
-log_src = "log_%s.txt" % (datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
+#embedding_src = '../data/GoogleNews-vectors-negative300.bin'
 
-def printl(x):
-    print(x)
-    with open(log_src, "a+") as f:
-        f.write(x + "\n")
-
-printl("Loading word2vec embeddings...")
+print("Loading word2vec embeddings...")
 is_binary = file_type(embedding_src)
 embedding = KeyedVectors.load_word2vec_format(embedding_src, binary=is_binary)
 X, Y, testX, max_tok_count = line_list(pos_src, neg_src, test_src)
@@ -44,7 +39,7 @@ def text2vecs(X, max_tok, embedding):
 def batch_gen(X, Y, batch_size, n_epochs, embedding, max_tok):
     n_sample = len(X)
     batches_per_epoch = int(np.ceil(n_sample/batch_size))
-    printl("[batch_gen] n_sample: {}, n_epochs: {} batches_per_epoch: {}".format(n_sample, n_epochs, batches_per_epoch))
+    print("[batch_gen] n_sample: {}, n_epochs: {} batches_per_epoch: {}".format(n_sample, n_epochs, batches_per_epoch))
     for epoch in range(n_epochs):
         shuffled_idx = np.random.permutation(np.arange(n_sample))
         shuffled_X = [X[i] for i in shuffled_idx]
@@ -59,27 +54,28 @@ def batch_gen(X, Y, batch_size, n_epochs, embedding, max_tok):
             yield vecX, Y_batch, seq_len
             start_idx += batch_size
 
-class LSTMModel():
-    def __init__(self, embedding_dim, max_tok):
+class MultiLSTMModel():
+    def __init__(self, embedding_dim, max_tok, cell_size=[256, 512]):
         self.X = tf.placeholder(tf.float32, [None, max_tok, embedding_dim], name="X")
         self.seq_len = tf.placeholder(tf.int32, [None], name="seq_len")
         self.Y = tf.placeholder(tf.float32, [None, 2], name="Y")
-        lstm_cells = tf.nn.rnn_cell.LSTMCell(512)
-        _, lstm_final_state = tf.nn.dynamic_rnn(
-                cell=lstm_cells,
+
+        rnn_layers = [tf.nn.rnn_cell.LSTMCell(size) for size in cell_size]
+        multi_rnn_cell = tf.nn.rnn_cell.MultiRNNCell(rnn_layers)
+        outputs, states = tf.nn.dynamic_rnn(
+                cell=multi_rnn_cell,
                 inputs=self.X,
                 dtype=tf.float32,
                 sequence_length=self.seq_len,
                 swap_memory=True)
-        #printl(lstm_final_state)
-        final_output = tf.layers.dropout(lstm_final_state.h, rate=0.5)
-        #final_output = lstm_final_state.h
+
+        num_cells = len(cell_size)
+        output_final_state = states[-1]
+        final_output = tf.layers.dropout(output_final_state.h, rate=0.25)
 
         # Outputs
         with tf.name_scope("output"):
-            hidden_dense = tf.layers.dense(final_output, units=64, activation=tf.nn.relu)
-            hidden_dense = tf.layers.dropout(hidden_dense, rate=0.4)
-            self.score = tf.layers.dense(hidden_dense, units=2, activation=tf.nn.relu)
+            self.score = tf.layers.dense(final_output, units=2, activation=tf.nn.relu)
             self.predictions = tf.nn.softmax(self.score, name='predictions')
             self.class_prediction = tf.argmax(self.predictions, 1)
             
@@ -94,14 +90,14 @@ class LSTMModel():
 val_samples = 10000
 val_split = 50
 n_epochs = 20
-batch_size = 32
+batch_size = 64
 learning_rate = 1e-4 # 1e-4
-eval_every_step = 2000
-output_every_step = 100
-checkpoint_every_step = 2000
+eval_every_step = 1000
+output_every_step = 50
+checkpoint_every_step = 1000
 
 # Split into training and validation
-printl("Splitting dataset into training and validation...")
+print("Splitting dataset into training and validation...")
 shuffled_idx = np.random.permutation(np.arange(len(X)))
 shuffled_X = [X[i] for i in shuffled_idx]
 shuffled_Y = Y[shuffled_idx]
@@ -112,14 +108,15 @@ train_X = shuffled_X[val_samples:]
 train_Y = shuffled_Y[val_samples:]
 
 # RNN
-printl("Building model...")
+print("Building model...")
 session_conf = tf.ConfigProto(
     allow_soft_placement=True,
     log_device_placement=False)
 sess = tf.Session(config=session_conf)
 embedding_dim = embedding.vector_size
 
-model = LSTMModel(embedding_dim, max_tok_count)
+cell_size = [512, 512, 512]  # <- create two LSTM layers with different hidden size
+model = MultiLSTMModel(embedding_dim, max_tok_count, cell_size)
 
 global_step = tf.Variable(1, name="global_step", trainable=False)
 optimizer = tf.train.AdamOptimizer(learning_rate)
@@ -162,7 +159,7 @@ if not os.path.exists(checkpoint_dir):
 saver = tf.train.Saver(tf.global_variables())
 
 # Initialize all variables
-printl("Initializing model variables...")
+print("Initializing model variables...")
 sess.run(tf.global_variables_initializer())
 
 def train_step(x_batch, y_batch, seq_len):
@@ -208,17 +205,17 @@ def evaluate_model(current_step):
                         val_std_acc: std_accuracy, val_avg_loss: average_loss})
     val_summary_writer.add_summary(val_summary, current_step)
     time_str = datetime.datetime.now().isoformat()
-    printl("{}: Evaluation report at step {}:".format(time_str, current_step))
-    printl("\tloss {:g}\n\tacc {:g} (stddev {:g})\n"
+    print("{}: Evaluation report at step {}:".format(time_str, current_step))
+    print("\tloss {:g}\n\tacc {:g} (stddev {:g})\n"
           "\t(Tested on the full test set)\n"
          .format(average_loss, average_accuracy, std_accuracy))
     return average_accuracy
 
-printl("Generating batches...")
+print("Generating batches...")
 batches = batch_gen(train_X, train_Y, batch_size, n_epochs, embedding, max_tok_count)
 
 # Training
-printl("Training started")
+print("Training started")
 current_step = None
 try:
     lcum = 0
@@ -232,20 +229,20 @@ try:
 
         if current_step % output_every_step == 0:
             time_str = datetime.datetime.now().isoformat()
-            printl("{}: step {}, loss {:g}, acc {:g}".format(time_str, current_step, lcum / output_every_step, acum / output_every_step))
+            print("{}: step {}, loss {:g}, acc {:g}".format(time_str, current_step, lcum / output_every_step, acum / output_every_step))
             lcum = 0
             acum = 0
         if current_step % eval_every_step == 0:
-            printl("\nEvaluating...")
+            print("\nEvaluating...")
             eval_start_ms = int(time.time() * 1000)
             current_accuracy = evaluate_model(current_step)
             eval_time_ms = int(time.time() * 1000) - eval_start_ms
-            printl("Evaluation performed in {0}ms.".format(eval_time_ms))
+            print("Evaluation performed in {0}ms.".format(eval_time_ms))
             if current_accuracy > best_accuracy:
             # Evaluate test data
                 best_accuracy = current_accuracy
                 submission_file = "../output/models/RNN/kaggle_%s_accu%f.csv" % (datetime.datetime.now().strftime("%Y%m%d%H%M%S"), best_accuracy)
-                printl("New best accuracy, generating submission file: %s" % submission_file)
+                print("New best accuracy, generating submission file: %s" % submission_file)
                 with open(submission_file, "w+") as f:
                     f.write("Id,Prediction\n")
                     testX_t = [testX[i:i+val_split] for i in range(0, len(testX), val_split)]
@@ -260,27 +257,27 @@ try:
                         for p in predictions:
                             f.write("{},{}\n".format(sample_no, (1 if p == 0 else -1)))
                             sample_no += 1
-                printl("saved to %s" % submission_file)
+                print("saved to %s" % submission_file)
 
         if current_step % checkpoint_every_step == 0:
-            printl("Save model parameters...")
+            print("Save model parameters...")
             path = saver.save(sess, checkpoint_prefix, global_step=current_step)
-            printl("Saved model checkpoint to {}\n".format(path))
+            print("Saved model checkpoint to {}\n".format(path))
 
     if current_step is None:
-        printl("No steps performed.")
+        print("No steps performed.")
     else:
-        printl("\n\nFinished all batches. Performing final evaluations.")
+        print("\n\nFinished all batches. Performing final evaluations.")
 
-    printl("Performing final evaluation...")
+    print("Performing final evaluation...")
     evaluate_model(current_step)
 
-    printl("Performing final checkpoint...")
+    print("Performing final checkpoint...")
     path = saver.save(sess, checkpoint_prefix, global_step=current_step)
-    printl("Saved model checkpoint to {}\n".format(path))
+    print("Saved model checkpoint to {}\n".format(path))
 
     # Evaluate test data
-    printl("Evaluating on test set")
+    print("Evaluating on test set")
     submission_file = "../output/models/RNN/kaggle_final_%s.csv" % datetime.datetime.now().strftime("%Y%m%d%H%M%S")
     with open(submission_file, "w+") as f:
         f.write("Id,Prediction\n")
@@ -296,15 +293,15 @@ try:
             for p in predictions:
                 f.write("{},{}\n".format(sample_no, (1 if p == 0 else -1)))
                 sample_no += 1
-    printl("Final submission file saved to " + submission_file)
+    print("Final submission file saved to " + submission_file)
 
 except KeyboardInterrupt:
     if current_step is None:
-        printl("No checkpointing to do.")
+        print("No checkpointing to do.")
     else:
-        printl("Training interrupted. Performing final checkpoint.")
-        printl("Press C-c again to forcefully interrupt this.")
+        print("Training interrupted. Performing final checkpoint.")
+        print("Press C-c again to forcefully interrupt this.")
         path = saver.save(sess, checkpoint_prefix, global_step=current_step)
-        printl("Saved model checkpoint to {}\n".format(path))
+        print("Saved model checkpoint to {}\n".format(path))
 
 

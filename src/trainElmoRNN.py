@@ -8,8 +8,8 @@ from gensim.models import KeyedVectors
 from utils.feature_extraction import line_list
 from utils.io import file_type
 
-pos_src = '../data/twitter-datasets/train_pos_full.txt'
-neg_src = '../data/twitter-datasets/train_neg_full.txt'
+pos_src = '../data/train_pos_full.txt'
+neg_src = '../data/train_neg_full.txt'
 test_src = '../data/test_data_stripped.txt'
 out_dir = '../output/models/RNN/'
 #embedding_src = '../data/glove.twitter.27B/glove.twitter.27B.200d.word2vec.txt'
@@ -43,8 +43,8 @@ def text2vecs(X, max_tok, embedding):
         tokens = line.split()
         #seq_len[i] = len(tokens)
         for j, token in enumerate(tokens):
-            if token in embedding.wv.vocab:
-                ret[i][j] = embedding.wv[token]
+            if token in embedding.vocab:
+                ret[i][j] = embedding[token]
     return ret#, seq_len
 
 def batch_gen(X, Y, batch_size, n_epochs, embedding, max_tok):
@@ -108,11 +108,11 @@ class LSTMModel():
 val_samples = 10000
 val_split = 50
 n_epochs = 2
-batch_size = 32
-learning_rate = 1e-4
-eval_every_step = 1000
-output_every_step = 50
-checkpoint_every_step = 1000
+batch_size = 16
+learning_rate = 1e-5
+eval_every_step = 2000
+output_every_step = 100
+checkpoint_every_step = 2000
 embedding_dim = embedding.vector_size
 
 # Split into training and validation
@@ -278,6 +278,7 @@ try:
                         x_vecs = text2vecs(testBatch, max_tok_count, embedding)
                         feed_dict = {
                                 model.X: ret,
+                                model.X_vecs: x_vecs,
                                 model.seq_len: seq_len
                         }
                         predictions = sess.run(model.class_prediction, feed_dict)

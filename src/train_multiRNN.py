@@ -15,9 +15,9 @@ neg_src = '../data/twitter-datasets/train_neg_full.txt'
 #test_src = '../data/test_data_stripped.txt'
 test_src = '../data/twitter-datasets/test_data_stripped.txt'
 out_dir = '../output/models/multiRNN/'
-embedding_src = '../data/glove.twitter.27B/glove.twitter.27B.200d.word2vec.txt'
+#embedding_src = '../data/glove.twitter.27B/glove.twitter.27B.200d.word2vec.txt'
 #embedding_src = 'datasources/word2vec_embedding.txt'
-#embedding_src = '../data/GoogleNews-vectors-negative300.bin'
+embedding_src = '../data/GoogleNews-vectors-negative300.bin'
 log_src = out_dir + "log_%s.txt" % (datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
 if not os.path.exists(out_dir):
     os.makedirs(out_dir)
@@ -67,6 +67,7 @@ class MultiLSTMModel():
         self.X = tf.placeholder(tf.float32, [None, max_tok, embedding_dim], name="X")
         self.seq_len = tf.placeholder(tf.int32, [None], name="seq_len")
         self.Y = tf.placeholder(tf.float32, [None, 2], name="Y")
+        # self.learning_rate = tf.placeholder(tf.float32, [None], name="lr")
 
         rnn_layers = [tf.nn.rnn_cell.LSTMCell(size) for size in cell_size]
         multi_rnn_cell = tf.nn.rnn_cell.MultiRNNCell(rnn_layers)
@@ -83,6 +84,8 @@ class MultiLSTMModel():
 
         # Outputs
         with tf.name_scope("output"):
+            hidden_dense = tf.layers.dense(final_output, units=64, activation=tf.nn.relu)
+            hidden_dense = tf.layers.dropout(hidden_dense, rate=0.4)
             self.score = tf.layers.dense(final_output, units=2, activation=tf.nn.relu)
             self.predictions = tf.nn.softmax(self.score, name='predictions')
             self.class_prediction = tf.argmax(self.predictions, 1)
@@ -98,11 +101,14 @@ class MultiLSTMModel():
 val_samples = 10000
 val_split = 50
 n_epochs = 20
-batch_size = 64
+batch_size = 32
 learning_rate = 1e-3 # 1e-4
 eval_every_step = 1000
 output_every_step = 50
 checkpoint_every_step = 1000
+
+# Model parameters
+cell_size = [256, 256, 256]  # <- create two LSTM layers with different hidden size
 
 # Split into training and validation
 printl("Splitting dataset into training and validation...")
@@ -123,7 +129,6 @@ session_conf = tf.ConfigProto(
 sess = tf.Session(config=session_conf)
 embedding_dim = embedding.vector_size
 
-cell_size = [512, 512, 512]  # <- create two LSTM layers with different hidden size
 model = MultiLSTMModel(embedding_dim, max_tok_count, cell_size)
 
 global_step = tf.Variable(1, name="global_step", trainable=False)
@@ -175,7 +180,7 @@ def train_step(x_batch, y_batch, seq_len):
     feed_dict = {
       model.X: x_batch,
       model.Y: y_batch,
-      model.seq_len: seq_len
+      model.seq_len: seq_len,
     }
     # add grad_summaries_merged to keep track of gradient values (time intense!)
     _, step, summaries, train_loss, train_accuracy = sess.run(
@@ -187,10 +192,11 @@ def train_step(x_batch, y_batch, seq_len):
 def val_step(x_batch, y_batch):
     """Performs a model evaluation batch step on the dev set."""
     x_vec, seq_len = text2vecs(x_batch, max_tok_count, embedding)
+
     feed_dict = {
       model.X: x_vec,
       model.Y: y_batch,
-      model.seq_len: seq_len
+      model.seq_len: seq_len,
     }
     _, val_loss, val_accuracy = sess.run(
         [global_step, model.loss, model.accuracy], feed_dict)

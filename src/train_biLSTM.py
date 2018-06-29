@@ -62,11 +62,11 @@ class BiLSTMModel():
 
         # Configure forward and backward LSTM cells
         fw_lstm_cells = tf.nn.rnn_cell.LSTMCell(num_fw)
-        bw_lstm_celss = tf.nn.rnn_cell.LSTMCell(num_bw)
+        bw_lstm_cells = tf.nn.rnn_cell.LSTMCell(num_bw)
 
         ((outputs_fw, outputs_bw), (outputs_state_fw, outputs_state_bw)) = tf.nn.bidirectional_dynamic_rnn(
             cell_fw=fw_lstm_cells,
-            cell_bw=bw_lstm_celss,
+            cell_bw=bw_lstm_cells,
             inputs=self.X,
             dtype=tf.float32,
             sequence_length=self.seq_len,
@@ -100,11 +100,15 @@ class BiLSTMModel():
 val_samples = 10000
 val_split = 50
 n_epochs = 35
-batch_size = 64
-learning_rate = 1e-4 # 1e-4
+batch_size = 32
+learning_rate = 1e-3 # 1e-4
 eval_every_step = 1000
 output_every_step = 50
 checkpoint_every_step = 1000
+
+# Model parameters
+num_fw_cell = 256  # <- set the number of forward LSTM cells
+num_bw_cell = 256  # <- set the number of backward LSTM cells
 
 # Split into training and validation
 print("Splitting dataset into training and validation...")
@@ -124,10 +128,6 @@ session_conf = tf.ConfigProto(
     log_device_placement=False)
 sess = tf.Session(config=session_conf)
 embedding_dim = embedding.vector_size
-
-num_fw_cell = 640  # <- set the number of forward LSTM cells
-num_bw_cell = 640  # <- set the number of backward LSTM cells
-
 
 model = BiLSTMModel(embedding_dim, max_tok_count, num_fw_cell, num_bw_cell)
 

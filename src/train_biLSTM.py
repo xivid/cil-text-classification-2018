@@ -8,7 +8,7 @@ from utils.feature_extraction import line_list
 from utils.io import file_type
 import logging
 
-logger = logging.getLogger("RNN")
+logger = logging.getLogger("bi-LSTM")
 
 pos_src = '../data/twitter-datasets/train_pos_full.txt'
 neg_src = '../data/twitter-datasets/train_neg_full.txt'
@@ -62,11 +62,11 @@ class BiLSTMModel():
 
         # Configure forward and backward LSTM cells
         fw_lstm_cells = tf.nn.rnn_cell.LSTMCell(num_fw)
-        bw_lstm_celss = tf.nn.rnn_cell.LSTMCell(num_bw)
+        bw_lstm_cells = tf.nn.rnn_cell.LSTMCell(num_bw)
 
         ((outputs_fw, outputs_bw), (outputs_state_fw, outputs_state_bw)) = tf.nn.bidirectional_dynamic_rnn(
             cell_fw=fw_lstm_cells,
-            cell_bw=bw_lstm_celss,
+            cell_bw=bw_lstm_cells,
             inputs=self.X,
             dtype=tf.float32,
             sequence_length=self.seq_len,
@@ -81,7 +81,7 @@ class BiLSTMModel():
         outputs_final_state = tf.contrib.rnn.LSTMStateTuple(c=final_state_c,
                                                             h=final_state_h)
         
-        final_output = tf.layers.dropout(outputs_final_state.h, rate=0.25)
+        final_output = tf.layers.dropout(outputs_final_state.h, rate=0.2)
 
         # Outputs
         with tf.name_scope("output"):
@@ -100,11 +100,15 @@ class BiLSTMModel():
 val_samples = 10000
 val_split = 50
 n_epochs = 35
-batch_size = 64
-learning_rate = 1e-4 # 1e-4
+batch_size = 32
+learning_rate = 1e-3 # 1e-4
 eval_every_step = 1000
 output_every_step = 50
 checkpoint_every_step = 1000
+
+# Model parameters
+num_fw_cell = 256  # <- set the number of forward LSTM cells
+num_bw_cell = 256  # <- set the number of backward LSTM cells
 
 # Split into training and validation
 print("Splitting dataset into training and validation...")
@@ -124,10 +128,6 @@ session_conf = tf.ConfigProto(
     log_device_placement=False)
 sess = tf.Session(config=session_conf)
 embedding_dim = embedding.vector_size
-
-num_fw_cell = 640  # <- set the number of forward LSTM cells
-num_bw_cell = 640  # <- set the number of backward LSTM cells
-
 
 model = BiLSTMModel(embedding_dim, max_tok_count, num_fw_cell, num_bw_cell)
 
@@ -254,7 +254,7 @@ try:
             if current_accuracy > best_accuracy:
             # Evaluate test data
                 best_accuracy = current_accuracy
-                submission_file = "../output/models/RNN/kaggle_%s_accu%f.csv" % (datetime.datetime.now().strftime("%Y%m%d%H%M%S"), best_accuracy)
+                submission_file = out_dir + "kaggle_%s_accu%f.csv" % (datetime.datetime.now().strftime("%Y%m%d%H%M%S"), best_accuracy)
                 print("New best accuracy, generating submission file: %s" % submission_file)
                 with open(submission_file, "w+") as f:
                     f.write("Id,Prediction\n")
@@ -291,7 +291,7 @@ try:
 
     # Evaluate test data
     print("Evaluating on test set")
-    submission_file = "../output/models/RNN/kaggle_final_%s.csv" % datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+    submission_file = out_dir + "kaggle_%s_accu%f.csv" % datetime.datetime.now().strftime("%Y%m%d%H%M%S")
     with open(submission_file, "w+") as f:
         f.write("Id,Prediction\n")
         testX = [testX[i:i+val_split] for i in range(0, len(testX), val_split)]

@@ -8,16 +8,16 @@ from utils.feature_extraction import line_list
 from utils.io import file_type
 import logging
 
-logger = logging.getLogger("RNN")
+logger = logging.getLogger("multiRNN")
 
 pos_src = '../data/twitter-datasets/train_pos_full.txt'
 neg_src = '../data/twitter-datasets/train_neg_full.txt'
 #test_src = '../data/test_data_stripped.txt'
 test_src = '../data/twitter-datasets/test_data_stripped.txt'
 out_dir = '../output/models/multiRNN/'
-#embedding_src = '../data/glove.twitter.27B/glove.twitter.27B.200d.word2vec.txt'
+embedding_src = '../data/glove.twitter.27B/glove.twitter.27B.200d.word2vec.txt'
 #embedding_src = 'datasources/word2vec_embedding.txt'
-embedding_src = '../data/GoogleNews-vectors-negative300.bin'
+#embedding_src = '../data/GoogleNews-vectors-negative300.bin'
 log_src = out_dir + "log_%s.txt" % (datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
 if not os.path.exists(out_dir):
     os.makedirs(out_dir)
@@ -292,7 +292,7 @@ try:
 
     # Evaluate test data
     printl("Evaluating on test set")
-    submission_file = "../output/models/RNN/kaggle_final_%s.csv" % datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+    submission_file = out_dir + "kaggle_final_%s.csv" % datetime.datetime.now().strftime("%Y%m%d%H%M%S")
     with open(submission_file, "w+") as f:
         f.write("Id,Prediction\n")
         testX = [testX[i:i+val_split] for i in range(0, len(testX), val_split)]

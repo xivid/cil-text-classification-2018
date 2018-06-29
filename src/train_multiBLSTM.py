@@ -15,9 +15,9 @@ neg_src = '../data/twitter-datasets/train_neg_full.txt'
 #test_src = '../data/test_data_stripped.txt'
 test_src = '../data/twitter-datasets/test_data_stripped.txt'
 out_dir = '../output/models/MultiBLSTM/'
-# embedding_src = '../data/glove.twitter.27B/glove.twitter.27B.200d.word2vec.txt'
+embedding_src = '../data/glove.twitter.27B/glove.twitter.27B.200d.word2vec.txt'
 # embedding_src = 'datasources/word2vec_embedding.txt'
-embedding_src = '../data/GoogleNews-vectors-negative300.bin'
+# embedding_src = '../data/GoogleNews-vectors-negative300.bin'
 
 print("Loading word2vec embeddings...")
 is_binary = file_type(embedding_src)
@@ -67,15 +67,10 @@ class MultiBLSTM():
         cell_fw = [tf.nn.rnn_cell.LSTMCell(num_cell) for i in range(num_layers)]
         cell_bw = [tf.nn.rnn_cell.LSTMCell(num_cell) for i in range(num_layers)]
         
-        #Add dropout layer
-        # cell_fw = tf.nn.rnn_cell.DropoutWrapper(cell_fw, output_keep_prob=self.dropout_rate)
-        # cell_bw = tf.nn.rnn_cell.DropoutWrapper(cell_bw, output_keep_prob=self.dropout_rate)
-        
         # Stacked multi layer bi-LSTM        
         fw_cells = tf.nn.rnn_cell.MultiRNNCell(cell_fw)
         bw_cells = tf.nn.rnn_cell.MultiRNNCell(cell_bw)
 
-        print ("building the stacked BLSTM model")
         ((outputs_fw, outputs_bw), (outputs_state_fw, outputs_state_bw)) = tf.nn.bidirectional_dynamic_rnn(
             cell_fw=fw_cells,
             cell_bw=bw_cells,
@@ -83,25 +78,24 @@ class MultiBLSTM():
             dtype=tf.float32,
             sequence_length=self.seq_len,
         )
-        print ("......Done")
+
+        # compute the final outputs and final states by combining forward and backward results
         output_state_fw = outputs_state_fw[-1]
         output_state_bw = outputs_state_bw[-1]
-        print ("To compute the final state ....")
-        # compute the final outputs and final states by combining forward and backward results
 
         final_state_c = tf.concat((output_state_fw.c, output_state_bw.c), 1)
         final_state_h = tf.concat((output_state_fw.h, output_state_bw.h), 1)
         outputs_final_state = tf.contrib.rnn.LSTMStateTuple(c=final_state_c,
                                                             h=final_state_h)
         
-        final_output = outputs_final_state.h
-        #final_output = tf.layers.dropout(outputs_final_state.h, rate=0.25)
+        # final_output = outputs_final_state.h
+        final_output = tf.layers.dropout(outputs_final_state.h, rate=0.2)
 
         # Outputs
         with tf.name_scope("output"):
-            hidden_dense = tf.layers.dense(final_output, units=64)
-            hidden_dense = tf.layers.dropout(hidden_dense, rate=0.5)
-            hidden_dense = tf.nn.relu(hidden_dense)
+            # hidden_dense = tf.layers.dense(final_output, units=64)
+            # hidden_dense = tf.layers.dropout(hidden_dense, rate=0.5)
+            # hidden_dense = tf.nn.relu(hidden_dense)
             self.score = tf.layers.dense(final_output, units=2, activation=tf.nn.relu)
             self.predictions = tf.nn.softmax(self.score, name='predictions')
             self.class_prediction = tf.argmax(self.predictions, 1)
@@ -118,14 +112,14 @@ val_samples = 10000
 val_split = 50
 n_epochs = 35
 batch_size = 32
-learning_rate = 1e-3 # 1e-4
+learning_rate = 1e-4 # 1e-4
 eval_every_step = 1000
 output_every_step = 50
 checkpoint_every_step = 1000
 
 # Model Parameters
-num_cell = 128  # <- set the number of forward & backward LSTM cells
-num_layers = 3  # <- number of BLSTM layers
+num_cell = 256  # <- set the number of forward & backward LSTM cells
+num_layers = 2  # <- number of BLSTM layers
 
 # Split into training and validation
 print("Splitting dataset into training and validation...")
@@ -272,7 +266,7 @@ try:
             if current_accuracy > best_accuracy:
             # Evaluate test data
                 best_accuracy = current_accuracy
-                submission_file = "../output/models/MultiBLSTM/kaggle_%s_accu%f.csv" % (datetime.datetime.now().strftime("%Y%m%d%H%M%S"), best_accuracy)
+                submission_file = out_dir + "kaggle_%s_accu%f.csv" % (datetime.datetime.now().strftime("%Y%m%d%H%M%S"), best_accuracy)
                 print("New best accuracy, generating submission file: %s" % submission_file)
                 with open(submission_file, "w+") as f:
                     f.write("Id,Prediction\n")
@@ -309,7 +303,7 @@ try:
 
     # Evaluate test data
     print("Evaluating on test set")
-    submission_file = "../output/models/MultiBLSTM/kaggle_final_%s.csv" % datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+    submission_file = out_dir + "kaggle_%s_accu%f.csv" % datetime.datetime.now().strftime("%Y%m%d%H%M%S")
     with open(submission_file, "w+") as f:
         f.write("Id,Prediction\n")
         testX = [testX[i:i+val_split] for i in range(0, len(testX), val_split)]

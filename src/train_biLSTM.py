@@ -8,7 +8,7 @@ from utils.feature_extraction import line_list
 from utils.io import file_type
 import logging
 
-logger = logging.getLogger("RNN")
+logger = logging.getLogger("bi-LSTM")
 
 pos_src = '../data/twitter-datasets/train_pos_full.txt'
 neg_src = '../data/twitter-datasets/train_neg_full.txt'
@@ -81,7 +81,7 @@ class BiLSTMModel():
         outputs_final_state = tf.contrib.rnn.LSTMStateTuple(c=final_state_c,
                                                             h=final_state_h)
         
-        final_output = tf.layers.dropout(outputs_final_state.h, rate=0.25)
+        final_output = tf.layers.dropout(outputs_final_state.h, rate=0.2)
 
         # Outputs
         with tf.name_scope("output"):
@@ -254,7 +254,7 @@ try:
             if current_accuracy > best_accuracy:
             # Evaluate test data
                 best_accuracy = current_accuracy
-                submission_file = "../output/models/RNN/kaggle_%s_accu%f.csv" % (datetime.datetime.now().strftime("%Y%m%d%H%M%S"), best_accuracy)
+                submission_file = out_dir + "kaggle_%s_accu%f.csv" % (datetime.datetime.now().strftime("%Y%m%d%H%M%S"), best_accuracy)
                 print("New best accuracy, generating submission file: %s" % submission_file)
                 with open(submission_file, "w+") as f:
                     f.write("Id,Prediction\n")
@@ -291,7 +291,7 @@ try:
 
     # Evaluate test data
     print("Evaluating on test set")
-    submission_file = "../output/models/RNN/kaggle_final_%s.csv" % datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+    submission_file = out_dir + "kaggle_%s_accu%f.csv" % datetime.datetime.now().strftime("%Y%m%d%H%M%S")
     with open(submission_file, "w+") as f:
         f.write("Id,Prediction\n")
         testX = [testX[i:i+val_split] for i in range(0, len(testX), val_split)]

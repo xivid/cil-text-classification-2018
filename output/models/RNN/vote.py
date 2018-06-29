@@ -1,10 +1,10 @@
 files = [
-        "kaggle_20180626142259_accu0.876900.csv",
-        "kaggle_20180626142516_accu0.877500.csv",
-        "kaggle_20180626144416_accu0.879700.csv",
-        "kaggle_20180626144852_accu0.880700.csv",
-        "kaggle_20180626145840_accu0.880700.csv",
-        "kaggle_20180626151509_accu0.881300.csv"
+        "kaggle_20180628155839_accu0.881500.csv",
+        "kaggle_20180628160635_accu0.882400.csv",
+        "kaggle_20180628161539_accu0.882800.csv",
+        "kaggle_20180628161907_accu0.883300.csv",
+        "kaggle_20180628162812_accu0.886100.csv",
+        "kaggle_20180628164723_accu0.887600.csv"
         ]
 
 scores = [0] * 10001

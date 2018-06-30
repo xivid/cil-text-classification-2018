@@ -7,21 +7,20 @@ import numpy as np
 from gensim.models import KeyedVectors
 from utils.feature_extraction import line_list
 from utils.io import file_type
+import queue
+import copy
 
 pos_src = '../data/twitter-datasets/train_pos_full.txt'
 neg_src = '../data/twitter-datasets/train_neg_full.txt'
 test_src = '../data/twitter-datasets/test_data_stripped.txt'
 out_dir = '../output/models/ElmoGRU/'
-embedding_src = '../data/glove.twitter.27B/glove.twitter.27B.200d.word2vec.txt'
-# embedding_src = 'datasources/word2vec_embedding.txt'
-# embedding_src = '../data/GoogleNews-vectors-negative300.bin'
-is_binary = file_type(embedding_src)
+if not os.path.exists(out_dir):
+    os.makedirs(out_dir)
 
 print("Loading ELMO module...")
 elmo = hub.Module("https://tfhub.dev/google/elmo/2", trainable=True)
 
 print("Loading word2vec embeddings...")
-embedding = KeyedVectors.load_word2vec_format(embedding_src, binary=is_binary)
 X, Y, testX, max_tok_count = line_list(pos_src, neg_src, test_src)
 Y = np.array([[1, 0] if i == 1 else [0, 1] for i in Y], dtype=np.float32)
 
@@ -67,7 +66,7 @@ def batch_gen(X, Y, batch_size, n_epochs, embedding, max_tok):
             start_idx += batch_size
 
 class ElmoGRUModel():
-    def __init__(self, embedding_dim, max_tok, num_cell=512):
+    def __init__(self, max_tok, num_cell=512):
         self.X = tf.placeholder(tf.string, [None], name="X")
         self.seq_len = tf.placeholder(tf.int32, [None], name="seq_len")
         self.Y = tf.placeholder(tf.float32, [None, 2], name="Y")
@@ -108,13 +107,12 @@ val_split = 50
 n_epochs = 20
 batch_size = 32
 learning_rate = 1e-4
-eval_every_step = 2000
-output_every_step = 100
+eval_every_step = 10
+output_every_step = 1
 checkpoint_every_step = 2000
 
 # Model Parameters
-embedding_dim = embedding.vector_size
-num_cell = 512   # <- cell size of biLSTM 
+num_cell = 512   # <- cell size of biLSTM
 
 # Split into training and validation
 print("Splitting dataset into training and validation...")
@@ -124,8 +122,10 @@ shuffled_Y = Y[shuffled_idx]
 
 val_X = [shuffled_X[i:min(i+val_split, val_samples)] for i in range(0, val_samples, val_split)]
 val_Y = np.split(shuffled_Y[:val_samples], val_samples/val_split)
+val_Y_concatenated = np.concatenate(val_Y)
 train_X = shuffled_X[val_samples:]
 train_Y = shuffled_Y[val_samples:]
+testX = [testX[i:i + val_split] for i in range(0, len(testX), val_split)]
 
 # RNN
 print("Building model...")
@@ -134,7 +134,7 @@ session_conf = tf.ConfigProto(
     log_device_placement=False)
 sess = tf.Session(config=session_conf)
 
-model = ElmoGRUModel(embedding_dim, max_tok_count, num_cell)
+model = ElmoGRUModel(max_tok_count, num_cell)
 
 global_step = tf.Variable(1, name="global_step", trainable=False)
 #learning_rate = tf.train.exponential_decay(1e-5,
@@ -142,7 +142,7 @@ global_step = tf.Variable(1, name="global_step", trainable=False)
 #                                           decay_steps=2000,
 #                                           decay_rate=0.97,
 #                                           staircase=False)
-optimizer = tf.train.AdamOptimizer(learning_rate)
+optimizer = tf.train.AdamOptimizer(model.learning_rate)
 
 # Gradient clipping
 #gvs = optimizer.compute_gradients(model.loss)
@@ -254,13 +254,82 @@ def evaluate_model(current_step):
 print("Generating batches...")
 batches = batch_gen(train_X, train_Y, batch_size, n_epochs, elmo, max_tok_count)
 
+voting_candidates = queue.PriorityQueue(9)
+
+def update_voting(accuracy, model):
+    if not voting_candidates.full():
+        voting_candidates.put((accuracy, model))
+        return True
+    else:
+        worst = voting_candidates.get()  # (accuracy, model)
+        if worst[0] < accuracy:
+            voting_candidates.put((accuracy, model))
+            return True
+        else:
+            voting_candidates.put(worst)
+            return False
+
+def get_voting_candidates():
+    l = voting_candidates.queue
+    return [x[1] for x in l]
+
+def get_voting_individual_accuracies():
+    l = voting_candidates.queue
+    return [x[0] for x in l]
+
+def evaluate_voting():
+    print("Evaluating the voting of 9 models with individual accuracies " + str(get_voting_individual_accuracies()))
+    models = get_voting_candidates()
+    voted_predictions = [0] * val_samples
+    for candidate in models:
+        sample_no = 0
+        for valBatch in val_X:
+            ret, seq_len = text2array(valBatch)
+            feed_dict = {
+                candidate.X: ret,
+                candidate.seq_len: seq_len
+            }
+            predictions = sess.run(candidate.class_prediction, feed_dict)
+            for p in predictions:
+                voted_predictions[sample_no] += (1 if p == 0 else -1)
+                sample_no += 1
+    correct_count = 0
+    for i in range(val_samples):
+        voted_predictions[i] = 1 if voted_predictions[i] > 0 else -1
+        if voted_predictions[i] == val_Y_concatenated[i]:
+            correct_count += 1
+    voted_accuracy = correct_count / val_samples
+    return voted_accuracy
+
+def predict_voting(submission_file):
+    models = get_voting_candidates()
+    voted_predictions = [0] * val_samples
+    for candidate in models:
+        sample_no = 0
+        for testBatch in testX:
+            ret, seq_len = text2array(testBatch)
+            feed_dict = {
+                candidate.X: ret,
+                candidate.seq_len: seq_len
+            }
+            predictions = sess.run(candidate.class_prediction, feed_dict)
+            for p in predictions:
+                voted_predictions[sample_no] += (1 if p == 0 else -1)
+                sample_no += 1
+    with open(submission_file, "w+") as f:
+        f.write("Id,Prediction\n")
+        sample_no = 1
+        for p in voted_predictions:
+            f.write("{},{}\n".format(sample_no, (1 if p > 0 else -1)))
+            sample_no += 1
+    print("saved to %s" % submission_file)
+
 # Training
 print("Training started")
 current_step = 0
 try:
     lcum = 0
     acum = 0
-    best_accuracy = -1
     for batchX, batchY, seq_len in batches:
         l, a = train_step(batchX, batchY, seq_len, current_step)
         lcum += l
@@ -278,29 +347,13 @@ try:
             current_accuracy = evaluate_model(current_step)
             eval_time_ms = int(time.time() * 1000) - eval_start_ms
             print("Evaluation performed in {0}ms.".format(eval_time_ms))
-            if current_accuracy > best_accuracy:
-            # Evaluate test data
-                best_accuracy = current_accuracy
-                submission_file = out_dir + "kaggle_%s_accu%f.csv" % (datetime.datetime.now().strftime("%Y%m%d%H%M%S"), best_accuracy)
-                print("New best accuracy, generating submission file: %s" % submission_file)
-                with open(submission_file, "w+") as f:
-                    f.write("Id,Prediction\n")
-                    testX_t = [testX[i:i+val_split] for i in range(0, len(testX), val_split)]
-                    sample_no = 1
-                    for testBatch in testX_t:
-                        ret, seq_len = text2array(testBatch)
-                        #x_vecs = text2vecs(testBatch, max_tok_count, embedding)
-                        feed_dict = {
-                                model.X: ret,
-                                #model.X_vecs: x_vecs,
-                                model.seq_len: seq_len
-                        }
-                        predictions = sess.run(model.class_prediction, feed_dict)
-                        for p in predictions:
-                            f.write("{},{}\n".format(sample_no, (1 if p == 0 else -1)))
-                            sample_no += 1
-                print("saved to %s" % submission_file)
-
+            if update_voting(current_accuracy, copy.deepcopy(model)):
+                # voting list updated, evaluate model with voting, then predict with voting
+                ensemble_accuracy = evaluate_voting()
+                print("Voting list updated, evaluation accuracy with ensemble: {}".format(ensemble_accuracy))
+                submission_file = out_dir + "kaggle_%s_accu%f.csv" % (datetime.datetime.now().strftime("%Y%m%d%H%M%S"), ensemble_accuracy)
+                print("Generating submission file: %s" % submission_file)
+                predict_voting(submission_file)
         if current_step % checkpoint_every_step == 0:
             print("Save model parameters...")
             path = saver.save(sess, checkpoint_prefix, global_step=current_step)
@@ -319,23 +372,10 @@ try:
     print("Saved model checkpoint to {}\n".format(path))
 
     # Evaluate test data
-    print("Evaluating on test set")
-    submission_file = out_dir + "kaggle_%s_accu%f.csv" % datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-    with open(submission_file, "w+") as f:
-        testX = [testX[i:i+val_split] for i in range(0, len(testX), val_split)]
-        sample_no = 1
-        for testBatch in testX:
-            ret, seq_len = text2array(testBatch)
-            #x_vecs = text2vecs(testBatch, max_tok_count, embedding)
-            feed_dict = {
-                    model.X: ret,
-                    #model.X_vecs: x_vecs,
-                    model.seq_len: seq_len
-            }
-            predictions = sess.run(model.class_prediction, feed_dict)
-            for p in predictions:
-                f.write("{},{}\n".format(sample_no, (1 if p == 0 else -1)))
-                sample_no += 1
+    print("Final evaluating on test set")
+    submission_file = out_dir + "kaggle_final_%s.csv" % (datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
+    print("Generating submission file: %s" % submission_file)
+    predict_voting(submission_file)
 
 except KeyboardInterrupt:
     if current_step is None:
@@ -345,22 +385,7 @@ except KeyboardInterrupt:
         print("Press C-c again to forcefully interrupt this.")
         path = saver.save(sess, checkpoint_prefix, global_step=current_step)
         print("Saved model checkpoint to {}\n".format(path))
-
-    with open("../output/submission_lstm.csv", "w+") as f:
-        f.write("Id,Predictions")
-        testX = [testX[i:i+val_split] for i in range(0, len(testX), val_split)]
-        sample_no = 1
-        for testBatch in testX:
-            ret, seq_len = text2array(testBatch)
-            #x_vecs = text2vecs(testBatch, max_tok_count, embedding)
-            feed_dict = {
-                    model.X: ret,
-                    #model.X_vecs: x_vecs,
-                    model.seq_len: seq_len
-            }
-            predictions = sess.run(model.class_prediction, feed_dict)
-            for p in predictions:
-                f.write("{},{}\n".format(sample_no, (1 if p == 0 else -1)))
-                sample_no += 1
-
+    submission_file = out_dir + "kaggle_final_%s.csv" % (datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
+    print("Generating submission file: %s" % submission_file)
+    predict_voting(submission_file)
 

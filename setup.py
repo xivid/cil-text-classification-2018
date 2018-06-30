@@ -20,6 +20,6 @@ setup(
             'gensim',
             'lightgbm',
             'tensorflow',
-            'keras'
+            'tensorflow-hub'
         ],
 )

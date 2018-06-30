@@ -224,19 +224,21 @@ def val_step(x_batch, y_batch, current_step):
       model.seq_len: seq_len,
       model.learning_rate: lr
     }
-    _, val_loss, val_accuracy = sess.run(
-        [global_step, model.loss, model.accuracy], feed_dict)
-    return val_loss, val_accuracy
+    _, val_loss, val_accuracy, val_pred = sess.run(
+        [global_step, model.loss, model.accuracy, model.class_prediction], feed_dict)
+    return val_loss, val_accuracy, val_pred
 
 def evaluate_model(current_step):
     """Evaluates model on a dev set."""
     losses = np.zeros(len(val_X))
     accuracies = np.zeros(len(val_X))
-
+    preds = []
     for i in range(len(val_X)):
-        loss, accuracy = val_step(val_X[i], val_Y[i], current_step)
+        loss, accuracy, pred = val_step(val_X[i], val_Y[i], current_step)
         losses[i] = loss
         accuracies[i] = accuracy
+        preds.append(pred)
+    preds = np.concatenate(preds)
 
     average_loss = np.nanmean(losses)
     average_accuracy = np.nanmean(accuracies)
@@ -249,50 +251,73 @@ def evaluate_model(current_step):
     print("\tloss {:g}\n\tacc {:g} (stddev {:g})\n"
           "\t(Tested on the full test set)\n"
          .format(average_loss, average_accuracy, std_accuracy))
-    return average_accuracy
+    return average_accuracy, preds
+
+def predict():
+    """Predict on the set set."""
+    preds = []
+    for testBatch in testX:
+        ret, seq_len = text2array(testBatch)
+        feed_dict = {
+            model.X: ret,
+            model.seq_len: seq_len
+        }
+        predictions = sess.run(model.class_prediction, feed_dict)
+        preds.append(predictions)
+    return np.concatenate(preds)
 
 print("Generating batches...")
 batches = batch_gen(train_X, train_Y, batch_size, n_epochs, elmo, max_tok_count)
 
-voting_candidates = queue.PriorityQueue(9)
+voting_candidates = []
 
-def update_voting(accuracy, model):
-    if not voting_candidates.full():
-        voting_candidates.put((accuracy, model))
+def is_better_candidate(accuracy):
+    if len(voting_candidates) == 9:
         return True
     else:
-        worst = voting_candidates.get()  # (accuracy, model)
+        worst = voting_candidates[0]  # (accuracy, predictions_val, predictions_test)
         if worst[0] < accuracy:
-            voting_candidates.put((accuracy, model))
             return True
-        else:
-            voting_candidates.put(worst)
-            return False
+    return False
 
-def get_voting_candidates():
-    l = voting_candidates.queue
-    return [x[1] for x in l]
+def update_voting(accuracy, predictions_val, predictions_test):
+    if len(voting_candidates) < 9:
+        voting_candidates.append((accuracy, predictions_val, predictions_test))
+    elif accuracy > voting_candidates[0][0]:
+        # replace worst
+        voting_candidates[0] = (accuracy, predictions_val, predictions_test)
+    # put new worst to idx 0
+    min_accu = 1
+    min_idx = 0
+    for idx, val in enumerate(voting_candidates):
+        if val[0] < min_accu:
+            min_accu = val[0]
+            min_idx = idx
+    if min_idx != 0:
+        voting_candidates[0], voting_candidates[min_idx] = voting_candidates[min_idx], voting_candidates[0]
+
 
 def get_voting_individual_accuracies():
     l = voting_candidates.queue
     return [x[0] for x in l]
 
+def get_voting_validations():
+    l = voting_candidates.queue
+    return [x[1] for x in l]
+
+def get_voting_tests():
+    l = voting_candidates.queue
+    return [x[2] for x in l]
+
 def evaluate_voting():
     print("Evaluating the voting of 9 models with individual accuracies " + str(get_voting_individual_accuracies()))
-    models = get_voting_candidates()
+    vals = get_voting_validations()
     voted_predictions = [0] * val_samples
-    for candidate in models:
+    for predictions in vals:
         sample_no = 0
-        for valBatch in val_X:
-            ret, seq_len = text2array(valBatch)
-            feed_dict = {
-                candidate.X: ret,
-                candidate.seq_len: seq_len
-            }
-            predictions = sess.run(candidate.class_prediction, feed_dict)
-            for p in predictions:
-                voted_predictions[sample_no] += (1 if p == 0 else -1)
-                sample_no += 1
+        for p in predictions:
+            voted_predictions[sample_no] += (1 if p == 0 else -1)
+            sample_no += 1
     correct_count = 0
     for i in range(val_samples):
         voted_predictions[i] = 1 if voted_predictions[i] > 0 else -1
@@ -302,20 +327,13 @@ def evaluate_voting():
     return voted_accuracy
 
 def predict_voting(submission_file):
-    models = get_voting_candidates()
+    tests = get_voting_tests()
     voted_predictions = [0] * val_samples
-    for candidate in models:
+    for predictions in tests:
         sample_no = 0
-        for testBatch in testX:
-            ret, seq_len = text2array(testBatch)
-            feed_dict = {
-                candidate.X: ret,
-                candidate.seq_len: seq_len
-            }
-            predictions = sess.run(candidate.class_prediction, feed_dict)
-            for p in predictions:
-                voted_predictions[sample_no] += (1 if p == 0 else -1)
-                sample_no += 1
+        for p in predictions:
+            voted_predictions[sample_no] += (1 if p == 0 else -1)
+            sample_no += 1
     with open(submission_file, "w+") as f:
         f.write("Id,Prediction\n")
         sample_no = 1
@@ -344,10 +362,12 @@ try:
         if current_step % eval_every_step == 0:
             print("\nEvaluating...")
             eval_start_ms = int(time.time() * 1000)
-            current_accuracy = evaluate_model(current_step)
+            current_accuracy, predictions_val = evaluate_model(current_step)
             eval_time_ms = int(time.time() * 1000) - eval_start_ms
             print("Evaluation performed in {0}ms.".format(eval_time_ms))
-            if update_voting(current_accuracy, copy.deepcopy(model)):
+            if is_better_candidate(current_accuracy):
+                predictions_test = predict()
+                update_voting(current_accuracy, predictions_val, predictions_test)
                 # voting list updated, evaluate model with voting, then predict with voting
                 ensemble_accuracy = evaluate_voting()
                 print("Voting list updated, evaluation accuracy with ensemble: {}".format(ensemble_accuracy))

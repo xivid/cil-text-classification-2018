@@ -113,8 +113,8 @@ val_split = 50
 n_epochs = 20
 batch_size = 32
 learning_rate = 1e-4
-eval_every_step = 10
-output_every_step = 1
+eval_every_step = 1000
+output_every_step = 50
 checkpoint_every_step = 2000
 
 # Model Parameters
@@ -128,7 +128,7 @@ shuffled_Y = Y[shuffled_idx]
 
 val_X = [shuffled_X[i:min(i+val_split, val_samples)] for i in range(0, val_samples, val_split)]
 val_Y = np.split(shuffled_Y[:val_samples], val_samples/val_split)
-val_Y_concatenated = np.concatenate(val_Y)
+val_Y_concatenated = shuffled_Y[:val_samples]
 train_X = shuffled_X[val_samples:]
 train_Y = shuffled_Y[val_samples:]
 testX = [testX[i:i + val_split] for i in range(0, len(testX), val_split)]
@@ -324,7 +324,7 @@ def evaluate_voting():
     correct_count = 0
     for i in range(val_samples):
         voted_predictions[i] = 1 if voted_predictions[i] > 0 else -1
-        if voted_predictions[i] == val_Y_concatenated[i]:
+        if voted_predictions[i] == val_Y_concatenated[i][0] or voted_predictions[i] == -val_Y_concatenated[i][1]:
             correct_count += 1
     voted_accuracy = correct_count / val_samples
     return voted_accuracy

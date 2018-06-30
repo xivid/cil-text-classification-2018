@@ -13,8 +13,8 @@ neg_src = '../data/twitter-datasets/train_neg_full.txt'
 test_src = '../data/twitter-datasets/test_data_stripped.txt'
 out_dir = '../output/models/ElmoGRU/'
 embedding_src = '../data/glove.twitter.27B/glove.twitter.27B.200d.word2vec.txt'
-#embedding_src = 'datasources/word2vec_embedding.txt'
-#embedding_src = '../data/GoogleNews-vectors-negative300.bin'
+# embedding_src = 'datasources/word2vec_embedding.txt'
+# embedding_src = '../data/GoogleNews-vectors-negative300.bin'
 is_binary = file_type(embedding_src)
 
 print("Loading ELMO module...")
@@ -69,18 +69,12 @@ def batch_gen(X, Y, batch_size, n_epochs, embedding, max_tok):
 class ElmoGRUModel():
     def __init__(self, embedding_dim, max_tok, num_cell=512):
         self.X = tf.placeholder(tf.string, [None], name="X")
-        self.X_vecs = tf.placeholder(tf.float32, [None, None, embedding_dim], name="X_vecs")
         self.seq_len = tf.placeholder(tf.int32, [None], name="seq_len")
         self.Y = tf.placeholder(tf.float32, [None, 2], name="Y")
         self.learning_rate = tf.placeholder(tf.float32, None, name="lr")
 
-        elmo_space = elmo(self.X, signature='default', as_dict=True)['elmo']
-        elmo_space = tf.layers.dropout(elmo_space, rate=0.4)
-        #_, elmo_seq_len, _ = context_vecs.get_shape().as_list()
-        #pad_elmo = tf.constant([[0, 0], [0, max_tok - elmo_seq_len], [0, 0]])
-        #elmo_space = tf.pad(context_vecs, pad_elmo)
-        
-        elmo_word_vecs = tf.concat([self.X_vecs, elmo_space], 2)
+        elmo_space = elmo(self.X, signature='default', as_dict=True)        
+        elmo_word_vecs = tf.concat([elmo_space['word_emb'], elmo_space['elmo']], 2)
         
         gru_cells = tf.nn.rnn_cell.GRUCell(num_cell, activation=tf.nn.relu)
         gru_output, gru_state = tf.nn.dynamic_rnn(
@@ -206,11 +200,9 @@ def adapt_learning_rate(current_step):
 
 def train_step(x_batch, y_batch, seq_len, current_step):
     """A single training step"""
-    x_vecs = text2vecs(x_batch, max_tok_count, embedding)
     lr = adapt_learning_rate(current_step)
     feed_dict = {
       model.X: x_batch,
-      model.X_vecs: x_vecs,
       model.Y: y_batch,
       model.seq_len: seq_len,
       model.learning_rate: lr
@@ -225,11 +217,9 @@ def train_step(x_batch, y_batch, seq_len, current_step):
 def val_step(x_batch, y_batch, current_step):
     """Performs a model evaluation batch step on the dev set."""
     x_array, seq_len = text2array(x_batch)
-    x_vecs = text2vecs(x_batch, max_tok_count, embedding)
     lr = adapt_learning_rate(current_step)
     feed_dict = {
       model.X: x_array,
-      model.X_vecs: x_vecs,
       model.Y: y_batch,
       model.seq_len: seq_len,
       model.learning_rate: lr
@@ -299,10 +289,10 @@ try:
                     sample_no = 1
                     for testBatch in testX_t:
                         ret, seq_len = text2array(testBatch)
-                        x_vecs = text2vecs(testBatch, max_tok_count, embedding)
+                        #x_vecs = text2vecs(testBatch, max_tok_count, embedding)
                         feed_dict = {
                                 model.X: ret,
-                                model.X_vecs: x_vecs,
+                                #model.X_vecs: x_vecs,
                                 model.seq_len: seq_len
                         }
                         predictions = sess.run(model.class_prediction, feed_dict)
@@ -336,10 +326,10 @@ try:
         sample_no = 1
         for testBatch in testX:
             ret, seq_len = text2array(testBatch)
-            x_vecs = text2vecs(testBatch, max_tok_count, embedding)
+            #x_vecs = text2vecs(testBatch, max_tok_count, embedding)
             feed_dict = {
                     model.X: ret,
-                    model.X_vecs: x_vecs,
+                    #model.X_vecs: x_vecs,
                     model.seq_len: seq_len
             }
             predictions = sess.run(model.class_prediction, feed_dict)
@@ -362,10 +352,10 @@ except KeyboardInterrupt:
         sample_no = 1
         for testBatch in testX:
             ret, seq_len = text2array(testBatch)
-            x_vecs = text2vecs(testBatch, max_tok_count, embedding)
+            #x_vecs = text2vecs(testBatch, max_tok_count, embedding)
             feed_dict = {
                     model.X: ret,
-                    model.X_vecs: x_vecs,
+                    #model.X_vecs: x_vecs,
                     model.seq_len: seq_len
             }
             predictions = sess.run(model.class_prediction, feed_dict)

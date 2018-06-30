@@ -2,44 +2,55 @@ import os
 import time
 import datetime
 import tensorflow as tf
+import tensorflow_hub as hub
 import numpy as np
 from gensim.models import KeyedVectors
 from utils.feature_extraction import line_list
 from utils.io import file_type
-import logging
-
-logger = logging.getLogger("bi-LSTM")
+import queue
+import copy
 
 pos_src = '../data/twitter-datasets/train_pos_full.txt'
 neg_src = '../data/twitter-datasets/train_neg_full.txt'
-#test_src = '../data/test_data_stripped.txt'
 test_src = '../data/twitter-datasets/test_data_stripped.txt'
-out_dir = '../output/models/biLSTM/'
-#embedding_src = '../data/glove.twitter.27B/glove.twitter.27B.200d.word2vec.txt'
-#embedding_src = 'datasources/word2vec_embedding.txt'
-embedding_src = '../data/GoogleNews-vectors-negative300.bin'
+out_dir = '../output/models/ElmoGRU/'
+if not os.path.exists(out_dir):
+    os.makedirs(out_dir)
+
+print("Loading ELMO module...")
+elmo = hub.Module("https://tfhub.dev/google/elmo/2", trainable=True)
 
 print("Loading word2vec embeddings...")
-is_binary = file_type(embedding_src)
-embedding = KeyedVectors.load_word2vec_format(embedding_src, binary=is_binary)
 X, Y, testX, max_tok_count = line_list(pos_src, neg_src, test_src)
 Y = np.array([[1, 0] if i == 1 else [0, 1] for i in Y], dtype=np.float32)
 
-def text2vecs(X, max_tok, embedding):
-    ret = np.zeros((len(X), max_tok, embedding.vector_size), dtype=np.float32)
+def text2array(X):
+    #ret = np.zeros((len(X), max_tok, 1024), dtype=np.float32)
     seq_len = np.zeros(len(X), dtype=np.int32)
+    ret = np.array(X)
+    for i, line in enumerate(X):
+        seq_len[i] = len(line.split())
+    return ret, seq_len
+
+def text2vecs(X, max_tok, embedding):
+    max_tok = 0
+    for line in X:
+        max_tok = max(len(line.split()), max_tok)
+
+    ret = np.zeros((len(X), max_tok, embedding.vector_size), dtype=np.float32)
+    #seq_len = np.zeros(len(X), dtype=np.int32)
     for i, line in enumerate(X):
         tokens = line.split()
-        seq_len[i] = len(tokens)
+        #seq_len[i] = len(tokens)
         for j, token in enumerate(tokens):
-            if token in embedding.wv.vocab:
-                ret[i][j] = embedding.wv[token]
-    return ret, seq_len
+            if token in embedding.vocab:
+                ret[i][j] = embedding[token]
+    return ret#, seq_len
 
 def batch_gen(X, Y, batch_size, n_epochs, embedding, max_tok):
     n_sample = len(X)
     batches_per_epoch = int(np.ceil(n_sample/batch_size))
-    print("[batch_gen] n_sample: {}, n_epochs: {} batches_per_epoch: {}".format(n_sample, n_epochs, batches_per_epoch))
+
     for epoch in range(n_epochs):
         shuffled_idx = np.random.permutation(np.arange(n_sample))
         shuffled_X = [X[i] for i in shuffled_idx]
@@ -48,44 +59,36 @@ def batch_gen(X, Y, batch_size, n_epochs, embedding, max_tok):
         start_idx = 0
         for batch in range(batches_per_epoch):
             end_idx = min(start_idx + batch_size, n_sample)
-            vecX, seq_len = text2vecs(shuffled_X[start_idx:end_idx], max_tok, embedding)
+            vecX, seq_len = text2array(shuffled_X[start_idx:end_idx])
             Y_batch = shuffled_Y[start_idx:end_idx]
             
             yield vecX, Y_batch, seq_len
             start_idx += batch_size
 
-class BiLSTMModel():
-    def __init__(self, embedding_dim, max_tok, num_fw, num_bw):
-        self.X = tf.placeholder(tf.float32, [None, max_tok, embedding_dim], name="X")
+class ElmoGRUModel():
+    def __init__(self, max_tok, num_cell=512):
+        self.X = tf.placeholder(tf.string, [None], name="X")
         self.seq_len = tf.placeholder(tf.int32, [None], name="seq_len")
         self.Y = tf.placeholder(tf.float32, [None, 2], name="Y")
         self.learning_rate = tf.placeholder(tf.float32, None, name="lr")
 
-        # Configure forward and backward LSTM cells
-        fw_lstm_cells = tf.nn.rnn_cell.LSTMCell(num_fw)
-        bw_lstm_cells = tf.nn.rnn_cell.LSTMCell(num_bw)
-
-        ((outputs_fw, outputs_bw), (outputs_state_fw, outputs_state_bw)) = tf.nn.bidirectional_dynamic_rnn(
-            cell_fw=fw_lstm_cells,
-            cell_bw=bw_lstm_cells,
-            inputs=self.X,
-            dtype=tf.float32,
-            sequence_length=self.seq_len,
-            swap_memory=True
-        )
+        elmo_space = elmo(self.X, signature='default', as_dict=True)        
+        elmo_word_vecs = tf.concat([elmo_space['word_emb'], elmo_space['elmo']], 2)
         
-        # compute the final outputs and final states by combining forward and backward results
-        outputs = tf.concat((outputs_fw, outputs_bw), 2)
+        gru_cells = tf.nn.rnn_cell.GRUCell(num_cell, activation=tf.nn.relu)
+        gru_output, gru_state = tf.nn.dynamic_rnn(
+                cell=gru_cells,
+                inputs=elmo_word_vecs,
+                dtype=tf.float32,
+                sequence_length=self.seq_len,
+                swap_memory=True)
 
-        final_state_c = tf.concat((outputs_state_fw.c, outputs_state_bw.c), 1)
-        final_state_h = tf.concat((outputs_state_fw.h, outputs_state_bw.h), 1)
-        outputs_final_state = tf.contrib.rnn.LSTMStateTuple(c=final_state_c,
-                                                            h=final_state_h)
-        
-        final_output = tf.layers.dropout(outputs_final_state.h, rate=0.2)
+        final_output = tf.layers.dropout(gru_state, rate=0.25)
 
         # Outputs
         with tf.name_scope("output"):
+            hidden_dense = tf.layers.dense(final_output, units=64, activation=tf.nn.relu)
+            hidden_dense = tf.layers.dropout(hidden_dense, rate=0.4)
             self.score = tf.layers.dense(final_output, units=2, activation=tf.nn.relu)
             self.predictions = tf.nn.softmax(self.score, name='predictions')
             self.class_prediction = tf.argmax(self.predictions, 1)
@@ -97,19 +100,19 @@ class BiLSTMModel():
             self.correct_pred = tf.equal(tf.argmax(self.predictions, 1), tf.argmax(self.Y, 1))
             self.accuracy = tf.reduce_mean(tf.cast(self.correct_pred, "float"), name="accuracy")
 
-# Hyperperameters
+
+# Hyperperameters for training
 val_samples = 10000
 val_split = 50
-n_epochs = 35
+n_epochs = 20
 batch_size = 32
-learning_rate = 1e-3 # 1e-4
-eval_every_step = 1000
-output_every_step = 50
-checkpoint_every_step = 1000
+learning_rate = 1e-4
+eval_every_step = 10
+output_every_step = 1
+checkpoint_every_step = 2000
 
-# Model parameters
-num_fw_cell = 512  # <- set the number of forward LSTM cells
-num_bw_cell = 512  # <- set the number of backward LSTM cells
+# Model Parameters
+num_cell = 512   # <- cell size of biLSTM
 
 # Split into training and validation
 print("Splitting dataset into training and validation...")
@@ -119,8 +122,10 @@ shuffled_Y = Y[shuffled_idx]
 
 val_X = [shuffled_X[i:min(i+val_split, val_samples)] for i in range(0, val_samples, val_split)]
 val_Y = np.split(shuffled_Y[:val_samples], val_samples/val_split)
+val_Y_concatenated = np.concatenate(val_Y)
 train_X = shuffled_X[val_samples:]
 train_Y = shuffled_Y[val_samples:]
+testX = [testX[i:i + val_split] for i in range(0, len(testX), val_split)]
 
 # RNN
 print("Building model...")
@@ -128,11 +133,15 @@ session_conf = tf.ConfigProto(
     allow_soft_placement=True,
     log_device_placement=False)
 sess = tf.Session(config=session_conf)
-embedding_dim = embedding.vector_size
 
-model = BiLSTMModel(embedding_dim, max_tok_count, num_fw_cell, num_bw_cell)
+model = ElmoGRUModel(max_tok_count, num_cell)
 
 global_step = tf.Variable(1, name="global_step", trainable=False)
+#learning_rate = tf.train.exponential_decay(1e-5,
+#                                           global_step=global_step,
+#                                           decay_steps=2000,
+#                                           decay_rate=0.97,
+#                                           staircase=False)
 optimizer = tf.train.AdamOptimizer(model.learning_rate)
 
 # Gradient clipping
@@ -178,15 +187,15 @@ sess.run(tf.global_variables_initializer())
 
 # change the learning rate according to the current step
 def adapt_learning_rate(current_step):
-    learning_rate = 1e-3
+    learning_rate = 1e-4
     if current_step >= 20000:
-        learning_rate = 1e-4
+        learning_rate = 1e-5
     elif current_step >= 100000:
         s = np.random.binomial(1, 0.7)
         if s == 1:
-            learning_rate = 1e-5
+            learning_rate = 1e-6
         else:
-            learning_rate = 1e-4
+            learning_rate = 1e-5
     return learning_rate
 
 def train_step(x_batch, y_batch, seq_len, current_step):
@@ -207,10 +216,10 @@ def train_step(x_batch, y_batch, seq_len, current_step):
 
 def val_step(x_batch, y_batch, current_step):
     """Performs a model evaluation batch step on the dev set."""
-    x_vec, seq_len = text2vecs(x_batch, max_tok_count, embedding)
+    x_array, seq_len = text2array(x_batch)
     lr = adapt_learning_rate(current_step)
     feed_dict = {
-      model.X: x_vec,
+      model.X: x_array,
       model.Y: y_batch,
       model.seq_len: seq_len,
       model.learning_rate: lr
@@ -243,16 +252,84 @@ def evaluate_model(current_step):
     return average_accuracy
 
 print("Generating batches...")
-batches = batch_gen(train_X, train_Y, batch_size, n_epochs, embedding, max_tok_count)
+batches = batch_gen(train_X, train_Y, batch_size, n_epochs, elmo, max_tok_count)
+
+voting_candidates = queue.PriorityQueue(9)
+
+def update_voting(accuracy, model):
+    if not voting_candidates.full():
+        voting_candidates.put((accuracy, model))
+        return True
+    else:
+        worst = voting_candidates.get()  # (accuracy, model)
+        if worst[0] < accuracy:
+            voting_candidates.put((accuracy, model))
+            return True
+        else:
+            voting_candidates.put(worst)
+            return False
+
+def get_voting_candidates():
+    l = voting_candidates.queue
+    return [x[1] for x in l]
+
+def get_voting_individual_accuracies():
+    l = voting_candidates.queue
+    return [x[0] for x in l]
+
+def evaluate_voting():
+    print("Evaluating the voting of 9 models with individual accuracies " + str(get_voting_individual_accuracies()))
+    models = get_voting_candidates()
+    voted_predictions = [0] * val_samples
+    for candidate in models:
+        sample_no = 0
+        for valBatch in val_X:
+            ret, seq_len = text2array(valBatch)
+            feed_dict = {
+                candidate.X: ret,
+                candidate.seq_len: seq_len
+            }
+            predictions = sess.run(candidate.class_prediction, feed_dict)
+            for p in predictions:
+                voted_predictions[sample_no] += (1 if p == 0 else -1)
+                sample_no += 1
+    correct_count = 0
+    for i in range(val_samples):
+        voted_predictions[i] = 1 if voted_predictions[i] > 0 else -1
+        if voted_predictions[i] == val_Y_concatenated[i]:
+            correct_count += 1
+    voted_accuracy = correct_count / val_samples
+    return voted_accuracy
+
+def predict_voting(submission_file):
+    models = get_voting_candidates()
+    voted_predictions = [0] * val_samples
+    for candidate in models:
+        sample_no = 0
+        for testBatch in testX:
+            ret, seq_len = text2array(testBatch)
+            feed_dict = {
+                candidate.X: ret,
+                candidate.seq_len: seq_len
+            }
+            predictions = sess.run(candidate.class_prediction, feed_dict)
+            for p in predictions:
+                voted_predictions[sample_no] += (1 if p == 0 else -1)
+                sample_no += 1
+    with open(submission_file, "w+") as f:
+        f.write("Id,Prediction\n")
+        sample_no = 1
+        for p in voted_predictions:
+            f.write("{},{}\n".format(sample_no, (1 if p > 0 else -1)))
+            sample_no += 1
+    print("saved to %s" % submission_file)
 
 # Training
 print("Training started")
-#current_step = None
 current_step = 0
 try:
     lcum = 0
     acum = 0
-    best_accuracy = -1
     for batchX, batchY, seq_len in batches:
         l, a = train_step(batchX, batchY, seq_len, current_step)
         lcum += l
@@ -270,33 +347,18 @@ try:
             current_accuracy = evaluate_model(current_step)
             eval_time_ms = int(time.time() * 1000) - eval_start_ms
             print("Evaluation performed in {0}ms.".format(eval_time_ms))
-            if current_accuracy > best_accuracy:
-            # Evaluate test data
-                best_accuracy = current_accuracy
-                submission_file = out_dir + "kaggle_%s_accu%f.csv" % (datetime.datetime.now().strftime("%Y%m%d%H%M%S"), best_accuracy)
-                print("New best accuracy, generating submission file: %s" % submission_file)
-                with open(submission_file, "w+") as f:
-                    f.write("Id,Prediction\n")
-                    testX_t = [testX[i:i+val_split] for i in range(0, len(testX), val_split)]
-                    sample_no = 1
-                    for testBatch in testX_t:
-                        ret, seq_len = text2vecs(testBatch, max_tok_count, embedding)
-                        feed_dict = {
-                                model.X: ret,
-                                model.seq_len: seq_len
-                        }
-                        predictions = sess.run(model.class_prediction, feed_dict)
-                        for p in predictions:
-                            f.write("{},{}\n".format(sample_no, (1 if p == 0 else -1)))
-                            sample_no += 1
-                print("saved to %s" % submission_file)
-
+            if update_voting(current_accuracy, copy.deepcopy(model)):
+                # voting list updated, evaluate model with voting, then predict with voting
+                ensemble_accuracy = evaluate_voting()
+                print("Voting list updated, evaluation accuracy with ensemble: {}".format(ensemble_accuracy))
+                submission_file = out_dir + "kaggle_%s_accu%f.csv" % (datetime.datetime.now().strftime("%Y%m%d%H%M%S"), ensemble_accuracy)
+                print("Generating submission file: %s" % submission_file)
+                predict_voting(submission_file)
         if current_step % checkpoint_every_step == 0:
             print("Save model parameters...")
             path = saver.save(sess, checkpoint_prefix, global_step=current_step)
             print("Saved model checkpoint to {}\n".format(path))
 
-    #if current_step is None:
     if current_step == 0:
         print("No steps performed.")
     else:
@@ -310,23 +372,10 @@ try:
     print("Saved model checkpoint to {}\n".format(path))
 
     # Evaluate test data
-    print("Evaluating on test set")
-    submission_file = out_dir + "kaggle_%s_accu%f.csv" % datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-    with open(submission_file, "w+") as f:
-        f.write("Id,Prediction\n")
-        testX = [testX[i:i+val_split] for i in range(0, len(testX), val_split)]
-        sample_no = 1
-        for testBatch in testX:
-            ret, seq_len = text2vecs(testBatch, max_tok_count, embedding)
-            feed_dict = {
-                    model.X: ret,
-                    model.seq_len: seq_len
-            }
-            predictions = sess.run(model.class_prediction, feed_dict)
-            for p in predictions:
-                f.write("{},{}\n".format(sample_no, (1 if p == 0 else -1)))
-                sample_no += 1
-    print("Final submission file saved to " + submission_file)
+    print("Final evaluating on test set")
+    submission_file = out_dir + "kaggle_final_%s.csv" % (datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
+    print("Generating submission file: %s" % submission_file)
+    predict_voting(submission_file)
 
 except KeyboardInterrupt:
     if current_step is None:
@@ -336,5 +385,7 @@ except KeyboardInterrupt:
         print("Press C-c again to forcefully interrupt this.")
         path = saver.save(sess, checkpoint_prefix, global_step=current_step)
         print("Saved model checkpoint to {}\n".format(path))
-
+    submission_file = out_dir + "kaggle_final_%s.csv" % (datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
+    print("Generating submission file: %s" % submission_file)
+    predict_voting(submission_file)
 

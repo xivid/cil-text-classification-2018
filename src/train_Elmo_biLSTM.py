@@ -113,9 +113,9 @@ class EbiLSTMModel():
 
         # Outputs
         with tf.name_scope("output"):
-            hidden_dense = tf.layers.dense(final_output, units=128, activation=tf.nn.relu)
-            hidden_dense = tf.layers.dropout(hidden_dense, rate=0.5)
-            self.score = tf.layers.dense(hidden_dense, units=2, activation=tf.nn.relu)
+            # hidden_dense = tf.layers.dense(final_output, units=128, activation=tf.nn.relu)
+            # hidden_dense = tf.layers.dropout(hidden_dense, rate=0.5)
+            self.score = tf.layers.dense(final_output, units=2, activation=tf.nn.relu)
             self.predictions = tf.nn.softmax(self.score, name='predictions')
             self.class_prediction = tf.argmax(self.predictions, 1)
             

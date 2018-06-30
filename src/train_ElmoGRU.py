@@ -304,16 +304,13 @@ def update_voting(accuracy, predictions_val, predictions_test):
 
 
 def get_voting_individual_accuracies():
-    l = voting_candidates.queue
-    return [x[0] for x in l]
+    return [x[0] for x in voting_candidates]
 
 def get_voting_validations():
-    l = voting_candidates.queue
-    return [x[1] for x in l]
+    return [x[1] for x in voting_candidates]
 
 def get_voting_tests():
-    l = voting_candidates.queue
-    return [x[2] for x in l]
+    return [x[2] for x in voting_candidates]
 
 def evaluate_voting():
     printl("Evaluating the voting of 9 models with individual accuracies " + str(get_voting_individual_accuracies()))

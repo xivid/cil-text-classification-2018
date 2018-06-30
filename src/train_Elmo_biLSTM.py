@@ -16,11 +16,19 @@ embedding_src = '../data/glove.twitter.27B/glove.twitter.27B.200d.word2vec.txt'
 #embedding_src = 'datasources/word2vec_embedding.txt'
 #embedding_src = '../data/GoogleNews-vectors-negative300.bin'
 is_binary = file_type(embedding_src)
+log_src = out_dir + "log_%s.txt" % (datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
+if not os.path.exists(out_dir):
+    os.makedirs(out_dir)
 
-print("Loading ELMO module...")
+def printl(x):
+    print(x)
+    with open(log_src, "a+") as f:
+        f.write(x + "\n")
+
+printl("Loading ELMO module...")
 elmo = hub.Module("https://tfhub.dev/google/elmo/2", trainable=True)
 
-print("Loading word2vec embeddings...")
+printl("Loading word2vec embeddings...")
 embedding = KeyedVectors.load_word2vec_format(embedding_src, binary=is_binary)
 X, Y, testX, max_tok_count = line_list(pos_src, neg_src, test_src)
 Y = np.array([[1, 0] if i == 1 else [0, 1] for i in Y], dtype=np.float32)
@@ -133,7 +141,7 @@ embedding_dim = embedding.vector_size
 num_cell = 512   # <- cell size of biLSTM 
 
 # Split into training and validation
-print("Splitting dataset into training and validation...")
+printl("Splitting dataset into training and validation...")
 shuffled_idx = np.random.permutation(np.arange(len(X)))
 shuffled_X = [X[i] for i in shuffled_idx]
 shuffled_Y = Y[shuffled_idx]
@@ -144,7 +152,7 @@ train_X = shuffled_X[val_samples:]
 train_Y = shuffled_Y[val_samples:]
 
 # RNN
-print("Building model...")
+printl("Building model...")
 session_conf = tf.ConfigProto(
     allow_soft_placement=True,
     log_device_placement=False)
@@ -198,7 +206,7 @@ if not os.path.exists(checkpoint_dir):
 saver = tf.train.Saver(tf.global_variables())
 
 # Initialize all variables
-print("Initializing model variables...")
+printl("Initializing model variables...")
 sess.run(tf.global_variables_initializer())
 
 def train_step(x_batch, y_batch, seq_len):
@@ -248,17 +256,17 @@ def evaluate_model(current_step):
                         val_std_acc: std_accuracy, val_avg_loss: average_loss})
     val_summary_writer.add_summary(val_summary, current_step)
     time_str = datetime.datetime.now().isoformat()
-    print("{}: Evaluation report at step {}:".format(time_str, current_step))
-    print("\tloss {:g}\n\tacc {:g} (stddev {:g})\n"
+    printl("{}: Evaluation report at step {}:".format(time_str, current_step))
+    printl("\tloss {:g}\n\tacc {:g} (stddev {:g})\n"
           "\t(Tested on the full test set)\n"
          .format(average_loss, average_accuracy, std_accuracy))
     return average_accuracy
 
-print("Generating batches...")
+printl("Generating batches...")
 batches = batch_gen(train_X, train_Y, batch_size, n_epochs, elmo, max_tok_count)
 
 # Training
-print("Training started")
+printl("Training started")
 current_step = None
 try:
     lcum = 0
@@ -272,20 +280,20 @@ try:
 
         if current_step % output_every_step == 0:
             time_str = datetime.datetime.now().isoformat()
-            print("{}: step {}, loss {:g}, acc {:g}".format(time_str, current_step, lcum / output_every_step, acum / output_every_step))
+            printl("{}: step {}, loss {:g}, acc {:g}".format(time_str, current_step, lcum / output_every_step, acum / output_every_step))
             lcum = 0
             acum = 0
         if current_step % eval_every_step == 0:
-            print("\nEvaluating...")
+            printl("\nEvaluating...")
             eval_start_ms = int(time.time() * 1000)
             current_accuracy = evaluate_model(current_step)
             eval_time_ms = int(time.time() * 1000) - eval_start_ms
-            print("Evaluation performed in {0}ms.".format(eval_time_ms))
+            printl("Evaluation performed in {0}ms.".format(eval_time_ms))
             if current_accuracy > best_accuracy:
             # Evaluate test data
                 best_accuracy = current_accuracy
                 submission_file = "../output/models/EbiLSTM/kaggle_%s_accu%f.csv" % (datetime.datetime.now().strftime("%Y%m%d%H%M%S"), best_accuracy)
-                print("New best accuracy, generating submission file: %s" % submission_file)
+                printl("New best accuracy, generating submission file: %s" % submission_file)
                 with open(submission_file, "w+") as f:
                     f.write("Id,Prediction\n")
                     testX_t = [testX[i:i+val_split] for i in range(0, len(testX), val_split)]
@@ -302,27 +310,28 @@ try:
                         for p in predictions:
                             f.write("{},{}\n".format(sample_no, (1 if p == 0 else -1)))
                             sample_no += 1
-                print("saved to %s" % submission_file)
+                printl("saved to %s" % submission_file)
 
         if current_step % checkpoint_every_step == 0:
-            print("Save model parameters...")
+            printl("Save model parameters...")
             path = saver.save(sess, checkpoint_prefix, global_step=current_step)
-            print("Saved model checkpoint to {}\n".format(path))
+            printl("Saved model checkpoint to {}\n".format(path))
 
     if current_step is None:
-        print("No steps performed.")
+        printl("No steps performed.")
     else:
-        print("\n\nFinished all batches. Performing final evaluations.")
+        printl("\n\nFinished all batches. Performing final evaluations.")
 
-    print("Performing final evaluation...")
+    printl("Performing final evaluation...")
     evaluate_model(current_step)
 
-    print("Performing final checkpoint...")
+    printl("Performing final checkpoint...")
     path = saver.save(sess, checkpoint_prefix, global_step=current_step)
-    print("Saved model checkpoint to {}\n".format(path))
+    printl("Saved model checkpoint to {}\n".format(path))
 
     # Evaluate test data
-    with open("../output/submission_lstm.csv", "w+") as f:
+    submission_file = out_dir + "kaggle_final_%s.csv" % datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+    with open(submission_file, "w+") as f:
         testX = [testX[i:i+val_split] for i in range(0, len(testX), val_split)]
         sample_no = 1
         for testBatch in testX:
@@ -340,14 +349,15 @@ try:
 
 except KeyboardInterrupt:
     if current_step is None:
-        print("No checkpointing to do.")
+        printl("No checkpointing to do.")
     else:
-        print("Training interrupted. Performing final checkpoint.")
-        print("Press C-c again to forcefully interrupt this.")
+        printl("Training interrupted. Performing final checkpoint.")
+        printl("Press C-c again to forcefully interrupt this.")
         path = saver.save(sess, checkpoint_prefix, global_step=current_step)
-        print("Saved model checkpoint to {}\n".format(path))
+        printl("Saved model checkpoint to {}\n".format(path))
 
-    with open("../output/submission_lstm.csv", "w+") as f:
+    submission_file = out_dir + "kaggle_final_%s.csv" % datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+    with open(submission_file, "w+") as f:
         f.write("Id,Predictions")
         testX = [testX[i:i+val_split] for i in range(0, len(testX), val_split)]
         sample_no = 1

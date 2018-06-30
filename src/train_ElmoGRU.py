@@ -142,7 +142,7 @@ global_step = tf.Variable(1, name="global_step", trainable=False)
 #                                           decay_steps=2000,
 #                                           decay_rate=0.97,
 #                                           staircase=False)
-optimizer = tf.train.AdamOptimizer(learning_rate)
+optimizer = tf.train.AdamOptimizer(model.learning_rate)
 
 # Gradient clipping
 #gvs = optimizer.compute_gradients(model.loss)

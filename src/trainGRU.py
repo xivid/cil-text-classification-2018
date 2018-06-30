@@ -8,18 +8,24 @@ from utils.feature_extraction import line_list
 from utils.io import file_type
 import logging
 
-logger = logging.getLogger("bi-LSTM")
+logger = logging.getLogger("GRU RNN")
 
 pos_src = '../data/twitter-datasets/train_pos_full.txt'
 neg_src = '../data/twitter-datasets/train_neg_full.txt'
 #test_src = '../data/test_data_stripped.txt'
 test_src = '../data/twitter-datasets/test_data_stripped.txt'
-out_dir = '../output/models/biLSTM/'
+out_dir = '../output/models/GRNN/'
 #embedding_src = '../data/glove.twitter.27B/glove.twitter.27B.200d.word2vec.txt'
 #embedding_src = 'datasources/word2vec_embedding.txt'
 embedding_src = '../data/GoogleNews-vectors-negative300.bin'
+log_src = "log_%s.txt" % (datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
 
-print("Loading word2vec embeddings...")
+def printl(x):
+    print(x)
+    with open(log_src, "a+") as f:
+        f.write(x + "\n")
+
+printl("Loading word2vec embeddings...")
 is_binary = file_type(embedding_src)
 embedding = KeyedVectors.load_word2vec_format(embedding_src, binary=is_binary)
 X, Y, testX, max_tok_count = line_list(pos_src, neg_src, test_src)
@@ -39,7 +45,7 @@ def text2vecs(X, max_tok, embedding):
 def batch_gen(X, Y, batch_size, n_epochs, embedding, max_tok):
     n_sample = len(X)
     batches_per_epoch = int(np.ceil(n_sample/batch_size))
-    print("[batch_gen] n_sample: {}, n_epochs: {} batches_per_epoch: {}".format(n_sample, n_epochs, batches_per_epoch))
+    printl("[batch_gen] n_sample: {}, n_epochs: {} batches_per_epoch: {}".format(n_sample, n_epochs, batches_per_epoch))
     for epoch in range(n_epochs):
         shuffled_idx = np.random.permutation(np.arange(n_sample))
         shuffled_X = [X[i] for i in shuffled_idx]
@@ -54,38 +60,26 @@ def batch_gen(X, Y, batch_size, n_epochs, embedding, max_tok):
             yield vecX, Y_batch, seq_len
             start_idx += batch_size
 
-class BiLSTMModel():
-    def __init__(self, embedding_dim, max_tok, num_fw, num_bw):
+class GRNNModel():
+    def __init__(self, embedding_dim, max_tok):
         self.X = tf.placeholder(tf.float32, [None, max_tok, embedding_dim], name="X")
         self.seq_len = tf.placeholder(tf.int32, [None], name="seq_len")
         self.Y = tf.placeholder(tf.float32, [None, 2], name="Y")
-        self.learning_rate = tf.placeholder(tf.float32, None, name="lr")
-
-        # Configure forward and backward LSTM cells
-        fw_lstm_cells = tf.nn.rnn_cell.LSTMCell(num_fw)
-        bw_lstm_cells = tf.nn.rnn_cell.LSTMCell(num_bw)
-
-        ((outputs_fw, outputs_bw), (outputs_state_fw, outputs_state_bw)) = tf.nn.bidirectional_dynamic_rnn(
-            cell_fw=fw_lstm_cells,
-            cell_bw=bw_lstm_cells,
-            inputs=self.X,
-            dtype=tf.float32,
-            sequence_length=self.seq_len,
-            swap_memory=True
-        )
-        
-        # compute the final outputs and final states by combining forward and backward results
-        outputs = tf.concat((outputs_fw, outputs_bw), 2)
-
-        final_state_c = tf.concat((outputs_state_fw.c, outputs_state_bw.c), 1)
-        final_state_h = tf.concat((outputs_state_fw.h, outputs_state_bw.h), 1)
-        outputs_final_state = tf.contrib.rnn.LSTMStateTuple(c=final_state_c,
-                                                            h=final_state_h)
-        
-        final_output = tf.layers.dropout(outputs_final_state.h, rate=0.2)
+        gru_cells = tf.nn.rnn_cell.GRUCell(512, activation=tf.nn.relu)
+        gru_output, gru_state = tf.nn.dynamic_rnn(
+                cell=gru_cells,
+                inputs=self.X,
+                dtype=tf.float32,
+                sequence_length=self.seq_len,
+                swap_memory=True)
+        #printl(lstm_final_state)
+        final_output = tf.layers.dropout(gru_state, rate=0.25)
+        #final_output = lstm_final_state.h
 
         # Outputs
         with tf.name_scope("output"):
+            hidden_dense = tf.layers.dense(final_output, units=128, activation=tf.nn.relu)
+            hidden_dense = tf.layers.dropout(hidden_dense, rate=0.4)
             self.score = tf.layers.dense(final_output, units=2, activation=tf.nn.relu)
             self.predictions = tf.nn.softmax(self.score, name='predictions')
             self.class_prediction = tf.argmax(self.predictions, 1)
@@ -100,19 +94,15 @@ class BiLSTMModel():
 # Hyperperameters
 val_samples = 10000
 val_split = 50
-n_epochs = 35
+n_epochs = 20
 batch_size = 32
-learning_rate = 1e-3 # 1e-4
-eval_every_step = 1000
-output_every_step = 50
-checkpoint_every_step = 1000
-
-# Model parameters
-num_fw_cell = 512  # <- set the number of forward LSTM cells
-num_bw_cell = 512  # <- set the number of backward LSTM cells
+learning_rate = 1e-4 # 1e-4
+eval_every_step = 2000
+output_every_step = 100
+checkpoint_every_step = 2000
 
 # Split into training and validation
-print("Splitting dataset into training and validation...")
+printl("Splitting dataset into training and validation...")
 shuffled_idx = np.random.permutation(np.arange(len(X)))
 shuffled_X = [X[i] for i in shuffled_idx]
 shuffled_Y = Y[shuffled_idx]
@@ -123,17 +113,17 @@ train_X = shuffled_X[val_samples:]
 train_Y = shuffled_Y[val_samples:]
 
 # RNN
-print("Building model...")
+printl("Building model...")
 session_conf = tf.ConfigProto(
     allow_soft_placement=True,
     log_device_placement=False)
 sess = tf.Session(config=session_conf)
 embedding_dim = embedding.vector_size
 
-model = BiLSTMModel(embedding_dim, max_tok_count, num_fw_cell, num_bw_cell)
+model = GRNNModel(embedding_dim, max_tok_count)
 
 global_step = tf.Variable(1, name="global_step", trainable=False)
-optimizer = tf.train.AdamOptimizer(model.learning_rate)
+optimizer = tf.train.AdamOptimizer(learning_rate)
 
 # Gradient clipping
 #gvs = optimizer.compute_gradients(model.loss)
@@ -173,30 +163,15 @@ if not os.path.exists(checkpoint_dir):
 saver = tf.train.Saver(tf.global_variables())
 
 # Initialize all variables
-print("Initializing model variables...")
+printl("Initializing model variables...")
 sess.run(tf.global_variables_initializer())
 
-# change the learning rate according to the current step
-def adapt_learning_rate(current_step):
-    learning_rate = 1e-3
-    if current_step >= 20000:
-        learning_rate = 1e-4
-    elif current_step >= 100000:
-        s = np.random.binomial(1, 0.7)
-        if s == 1:
-            learning_rate = 1e-5
-        else:
-            learning_rate = 1e-4
-    return learning_rate
-
-def train_step(x_batch, y_batch, seq_len, current_step):
+def train_step(x_batch, y_batch, seq_len):
     """A single training step"""
-    lr = adapt_learning_rate(current_step)
     feed_dict = {
       model.X: x_batch,
       model.Y: y_batch,
-      model.seq_len: seq_len,
-      model.learning_rate: lr
+      model.seq_len: seq_len
     }
     # add grad_summaries_merged to keep track of gradient values (time intense!)
     _, step, summaries, train_loss, train_accuracy = sess.run(
@@ -205,15 +180,13 @@ def train_step(x_batch, y_batch, seq_len, current_step):
     train_summary_writer.add_summary(summaries, step)
     return train_loss, train_accuracy
 
-def val_step(x_batch, y_batch, current_step):
+def val_step(x_batch, y_batch):
     """Performs a model evaluation batch step on the dev set."""
     x_vec, seq_len = text2vecs(x_batch, max_tok_count, embedding)
-    lr = adapt_learning_rate(current_step)
     feed_dict = {
       model.X: x_vec,
       model.Y: y_batch,
-      model.seq_len: seq_len,
-      model.learning_rate: lr
+      model.seq_len: seq_len
     }
     _, val_loss, val_accuracy = sess.run(
         [global_step, model.loss, model.accuracy], feed_dict)
@@ -225,7 +198,7 @@ def evaluate_model(current_step):
     accuracies = np.zeros(len(val_X))
 
     for i in range(len(val_X)):
-        loss, accuracy = val_step(val_X[i], val_Y[i], current_step)
+        loss, accuracy = val_step(val_X[i], val_Y[i])
         losses[i] = loss
         accuracies[i] = accuracy
 
@@ -236,45 +209,44 @@ def evaluate_model(current_step):
                         val_std_acc: std_accuracy, val_avg_loss: average_loss})
     val_summary_writer.add_summary(val_summary, current_step)
     time_str = datetime.datetime.now().isoformat()
-    print("{}: Evaluation report at step {}:".format(time_str, current_step))
-    print("\tloss {:g}\n\tacc {:g} (stddev {:g})\n"
+    printl("{}: Evaluation report at step {}:".format(time_str, current_step))
+    printl("\tloss {:g}\n\tacc {:g} (stddev {:g})\n"
           "\t(Tested on the full test set)\n"
          .format(average_loss, average_accuracy, std_accuracy))
     return average_accuracy
 
-print("Generating batches...")
+printl("Generating batches...")
 batches = batch_gen(train_X, train_Y, batch_size, n_epochs, embedding, max_tok_count)
 
 # Training
-print("Training started")
-#current_step = None
-current_step = 0
+printl("Training started")
+current_step = None
 try:
     lcum = 0
     acum = 0
     best_accuracy = -1
     for batchX, batchY, seq_len in batches:
-        l, a = train_step(batchX, batchY, seq_len, current_step)
+        l, a = train_step(batchX, batchY, seq_len)
         lcum += l
         acum += a
         current_step = tf.train.global_step(sess, global_step)
 
         if current_step % output_every_step == 0:
             time_str = datetime.datetime.now().isoformat()
-            print("{}: step {}, loss {:g}, acc {:g}".format(time_str, current_step, lcum / output_every_step, acum / output_every_step))
+            printl("{}: step {}, loss {:g}, acc {:g}".format(time_str, current_step, lcum / output_every_step, acum / output_every_step))
             lcum = 0
             acum = 0
         if current_step % eval_every_step == 0:
-            print("\nEvaluating...")
+            printl("\nEvaluating...")
             eval_start_ms = int(time.time() * 1000)
             current_accuracy = evaluate_model(current_step)
             eval_time_ms = int(time.time() * 1000) - eval_start_ms
-            print("Evaluation performed in {0}ms.".format(eval_time_ms))
+            printl("Evaluation performed in {0}ms.".format(eval_time_ms))
             if current_accuracy > best_accuracy:
             # Evaluate test data
                 best_accuracy = current_accuracy
                 submission_file = out_dir + "kaggle_%s_accu%f.csv" % (datetime.datetime.now().strftime("%Y%m%d%H%M%S"), best_accuracy)
-                print("New best accuracy, generating submission file: %s" % submission_file)
+                printl("New best accuracy, generating submission file: %s" % submission_file)
                 with open(submission_file, "w+") as f:
                     f.write("Id,Prediction\n")
                     testX_t = [testX[i:i+val_split] for i in range(0, len(testX), val_split)]
@@ -289,28 +261,27 @@ try:
                         for p in predictions:
                             f.write("{},{}\n".format(sample_no, (1 if p == 0 else -1)))
                             sample_no += 1
-                print("saved to %s" % submission_file)
+                printl("saved to %s" % submission_file)
 
         if current_step % checkpoint_every_step == 0:
-            print("Save model parameters...")
+            printl("Save model parameters...")
             path = saver.save(sess, checkpoint_prefix, global_step=current_step)
-            print("Saved model checkpoint to {}\n".format(path))
+            printl("Saved model checkpoint to {}\n".format(path))
 
-    #if current_step is None:
-    if current_step == 0:
-        print("No steps performed.")
+    if current_step is None:
+        printl("No steps performed.")
     else:
-        print("\n\nFinished all batches. Performing final evaluations.")
+        printl("\n\nFinished all batches. Performing final evaluations.")
 
-    print("Performing final evaluation...")
+    printl("Performing final evaluation...")
     evaluate_model(current_step)
 
-    print("Performing final checkpoint...")
+    printl("Performing final checkpoint...")
     path = saver.save(sess, checkpoint_prefix, global_step=current_step)
-    print("Saved model checkpoint to {}\n".format(path))
+    printl("Saved model checkpoint to {}\n".format(path))
 
     # Evaluate test data
-    print("Evaluating on test set")
+    printl("Evaluating on test set")
     submission_file = out_dir + "kaggle_%s_accu%f.csv" % datetime.datetime.now().strftime("%Y%m%d%H%M%S")
     with open(submission_file, "w+") as f:
         f.write("Id,Prediction\n")
@@ -326,15 +297,15 @@ try:
             for p in predictions:
                 f.write("{},{}\n".format(sample_no, (1 if p == 0 else -1)))
                 sample_no += 1
-    print("Final submission file saved to " + submission_file)
+    printl("Final submission file saved to " + submission_file)
 
 except KeyboardInterrupt:
     if current_step is None:
-        print("No checkpointing to do.")
+        printl("No checkpointing to do.")
     else:
-        print("Training interrupted. Performing final checkpoint.")
-        print("Press C-c again to forcefully interrupt this.")
+        printl("Training interrupted. Performing final checkpoint.")
+        printl("Press C-c again to forcefully interrupt this.")
         path = saver.save(sess, checkpoint_prefix, global_step=current_step)
-        print("Saved model checkpoint to {}\n".format(path))
+        printl("Saved model checkpoint to {}\n".format(path))
 
 

@@ -38,19 +38,19 @@ def text2array(X):
 
 def batch_gen(X, Y, batch_size, n_epochs, max_tok):
     n_sample = len(X)
-    batches_per_epoch = int(np.ceil(n_sample/batch_size))
+    batches_per_epoch = int(np.ceil(n_sample / batch_size))
 
     for epoch in range(n_epochs):
         shuffled_idx = np.random.permutation(np.arange(n_sample))
         shuffled_X = [X[i] for i in shuffled_idx]
         shuffled_Y = Y[shuffled_idx]
-        
+
         start_idx = 0
         for batch in range(batches_per_epoch):
             end_idx = min(start_idx + batch_size, n_sample)
             vecX, seq_len = text2array(shuffled_X[start_idx:end_idx])
             Y_batch = shuffled_Y[start_idx:end_idx]
-            
+
             yield vecX, Y_batch, seq_len
             start_idx += batch_size
 
@@ -241,7 +241,7 @@ def predict():
     return np.concatenate(preds)
 
 printl("Generating batches...")
-batches = batch_gen(train_X, train_Y, batch_size, n_epochs, elmo, max_tok_count)
+batches = batch_gen(train_X, train_Y, batch_size, n_epochs, max_tok_count)
 
 
 voting_candidates = []

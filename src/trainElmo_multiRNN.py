@@ -208,7 +208,7 @@ def evaluate_model(current_step):
     accuracies = np.zeros(len(val_X))
     preds = []
     for i in range(len(val_X)):
-        loss, accuracy, pred = val_step(val_X[i], val_Y[i], current_step)
+        loss, accuracy, pred = val_step(val_X[i], val_Y[i])
         losses[i] = loss
         accuracies[i] = accuracy
         preds.append(pred)

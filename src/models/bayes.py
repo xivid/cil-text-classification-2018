@@ -1,128 +1,44 @@
 from core import BaseModel
 import numpy as np
-from scipy.sparse import csr_matrix
-from sklearn.naive_bayes import MultinomialNB
+from sklearn.utils.validation import check_array
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+from sklearn.naive_bayes import GaussianNB
+import logging
+#from sklearn.naive_bayes import MultinomialNB
+#from scipy.sparse import csr_matrix
+
+logger = logging.getLogger("NaiveBayes")
 
 
 class NaiveBayes(BaseModel):
-    def __init__(self):
-        BaseModel.__init__(self)
-        self.vocabulary = dict()
-        """ X
-            Word occurrence vectors, each row is a tweet, each column is a word.
-            X[i][j] is the times by which the word j occurs in the tweet i.
-            Use sparse matrix to significantly reduce memory usage.
-        """
-        self.X = None
-        """ Y
-            Class labels. 1 for positive, -1 for negative.
-        """
-        self.Y = None
-        """ model
-            Trained model.
-        """
-        self.model = None
+    def __init__(self, data_source, save_path=None, valid_size=0.33):
+        BaseModel.__init__(self, data_source, save_path)
+        self.valid_size = valid_size
+        self.model = GaussianNB()
+    
+    def train(self):
+        logger.info("Fitting Naive Bayes model...")
 
-    def load_training_data(self, pos_src, neg_src):
-        print("Loading positive samples...")
+        X_train, X_val, y_train, y_val = train_test_split(self.data_source.X, self.data_source.Y, test_size=self.valid_size, random_state=42)
+        self.model = self.model.fit(X_train, y_train)
+        logger.info("Trained model: " + str(self.model))
 
-        # read lines
-        f = open(pos_src, "r")
-        lines = f.readlines()
-        n_lines = len(lines)
-        print("%s: %d samples" % (pos_src, n_lines))
+        # save the trained model
+        # logger.info("Saving the model to " + self.save_path)
+        # pickle.dump(self.model, self.save_path)
 
-        # class labels
-        self.Y = [1] * n_lines
+        # calculate errors
+        train_pred = self.predict(X_train)
+        self.training_accuracy = accuracy_score(y_train, train_pred)
+        logger.info("Training accuracy: %f" % self.training_accuracy)
 
-        # gather information for sparse matrix
-        indptr = [0]
-        indices = []
-        data = []
-        cnt = 0
-        for line in lines:
-            tokens = line.strip().split()
-            for token in tokens:
-                index = self.vocabulary.setdefault(token, len(self.vocabulary))
-                indices.append(index)
-                data.append(1)
-            indptr.append(len(indices))
-            cnt += 1
-            if cnt % 10000 == 0:
-                print("%d/%d loaded" % (cnt, n_lines))
+        val_pred = self.predict(X_val)
+        self.validation_accuracy = accuracy_score(y_val, val_pred)
+        logger.info("Validating accuracy: %f" % self.validation_accuracy)
 
-        f.close()
-        del lines
-
-        print("Loading negative samples...")
-
-        # read lines
-        f = open(neg_src, "r")
-        lines = f.readlines()
-        n_lines = len(lines)
-        print("%s: %d samples" % (pos_src, n_lines))
-
-        # class labels
-        self.Y += [-1] * n_lines
-
-        # append sparse matrix
-        cnt = 0
-        for line in lines:
-            tokens = line.strip().split()
-            for token in tokens:
-                index = self.vocabulary.setdefault(token, len(self.vocabulary))
-                indices.append(index)
-                data.append(1)
-            indptr.append(len(indices))
-            cnt += 1
-            if cnt % 10000 == 0:
-                print("%d/%d loaded" % (cnt, n_lines))
-        print("%d loaded" % n_lines)
-
-        # build sparse matrix
-        self.X = csr_matrix((data, indices, indptr), dtype=int)
-
-        self.Y = np.array(self.Y)
-
-    def train(self, pos_src, neg_src):
-        self.load_training_data(pos_src, neg_src)
-        clf = MultinomialNB()
-        clf.fit(self.X, self.Y)
-        self.model = clf
-        print("Trained model: " + str(self.model))
-
-    def predict(self, test_src):
-        if self.model is None:
-            raise RuntimeError("No trained model! (saving model not implemented yet)")
-        print("Loading test data...")
-
-        # read lines
-        f = open(test_src, "r")
-        lines = f.readlines()
-        n_lines = len(lines)
-        print("%s: %d samples" % (test_src, n_lines))
-
-        # gather information for sparse matrix
-        indptr = [0]
-        indices = []
-        data = []
-        cnt = 0
-        for line in lines:
-            line = line.strip()
-            noptr = line.find(",")
-            line = line[noptr + 1:]
-            tokens = line.strip().split()
-            for token in tokens:
-                index = self.vocabulary.get(token, -1)
-                if index != -1:
-                    indices.append(index)
-                    data.append(1)
-            indptr.append(len(indices))
-            cnt += 1
-            if cnt % 1000 == 0:
-                print("%d/%d loaded" % (cnt, n_lines))
-
-        # build sparse matrix
-        mat = csr_matrix((data, indices, indptr), shape=(n_lines, len(self.vocabulary)), dtype=int)
-
-        return self.model.predict(mat)
+    def predict(self, X):
+        X = check_array(X)
+        pred = self.model.predict(X)
+        return pred
+    

@@ -38,15 +38,18 @@ def main():
                 counter += 1
 
 # Adapted from bayes.py 
-def sparse_matrix(text_files=[pos_src, neg_src]):
+def sparse_matrix(pos_src, neg_src, test_src):
     # gather information for sparse matrix\
+    logger = logging.getLogger("sparse_matrix")
     vocab = dict()
 
     indptr = [0]
     indices = []
     data = []
-    for fn in text_files:
+    Y = []
+    for fileno, fn in enumerate([pos_src, neg_src]:
         with open(fn) as f:
+            logger.info("processing " + fn)
             lines = f.readlines()
             n_lines = len(lines)
             cnt = 0
@@ -61,10 +64,35 @@ def sparse_matrix(text_files=[pos_src, neg_src]):
                 cnt += 1
                 if cnt % 10000 == 0:
                     print("%d/%d loaded" % (cnt, n_lines))
+            if fileno == 0:
+                Y = np.array([1] * num_tweet)
+            else:
+                Y = np.concatenate((Y, [-1]*num_tweet))
     
     X = csr_matrix((data, indices, indptr), dtype=int)
+
+    indptr = [0]
+    indices = []
+    data = []
+    cnt = 0
+    with open(test_src) as f:
+        logger.info("processing " + test_src)
+        for line in lines:
+            tokens = line.strip().split()
+            for token in tokens:
+                index = self.vocabulary.get(token, -1)
+                if index != -1:
+                    indices.append(index)
+                    data.append(1)
+            indptr.append(len(indices))
+            cnt += 1
+            if cnt % 1000 == 0:
+                print("%d/%d loaded" % (cnt, n_lines))
+
+    # build sparse matrix
+    testX = csr_matrix((data, indices, indptr), shape=(n_lines, len(self.vocabulary)), dtype=int)
     
-    return X
+    return X, Y, testX
 
 def line_list(pos_src, neg_src, test_src):
     logger = logging.getLogger("line_list")
@@ -93,7 +121,7 @@ def line_list(pos_src, neg_src, test_src):
                 Y = np.concatenate((Y, [-1]*num_tweet))
     testX = []
     with open(test_src) as f:
-        logger.info("processing " + fn)
+        logger.info("processing " + test_src)
         lines = f.readlines()
         num_tweet = len(lines)
         counter = 1

@@ -3,9 +3,9 @@ from .bayes import NaiveBayes
 from .logistic import LR
 from .svm import SVM
 from .lightgbm import LightGBM
-from .lstm import LSTMModel
+#from .lstm import LSTMModel
 
-__all__ = ('NaiveBayes', 'LR', 'SVM', 'LightGBM', 'LSTM')
+__all__ = ('NaiveBayes', 'LR', 'SVM', 'LightGBM')
 
 
 def get_model(name):
@@ -17,7 +17,7 @@ def get_model(name):
         return SVM
     elif name == 'LightGBM':
         return LightGBM
-    elif name == 'LSTM':
-        return LSTMModel
+    #elif name == 'LSTM':
+    #    return LSTMModel
     else:
         raise NotImplementedError("No model called \"%s\"!" % name)

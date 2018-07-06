@@ -7,7 +7,7 @@ setup(
         version='0.1',
         description='CIL Project for Text Sentiment Classification.',
 
-        author='CIL Group 42',
+        author='CIL Group Satisfaction',
         author_email='',
 
         packages=find_packages(exclude=[]),

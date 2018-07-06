@@ -8,6 +8,9 @@ import logging
 logger = logging.getLogger("SVM")
 
 class SVM(BaseModel):
+    '''
+    Warning: this model is too slow to train, so we didn't actually use it.
+    '''
     def __init__(self, data_source, save_path=None, kernel='linear', penalty=1.0, valid_size=0.33):
         BaseModel.__init__(self, data_source, save_path)
         self.valid_size = valid_size

@@ -41,11 +41,11 @@ when using [virtualenvwrapper](https://virtualenvwrapper.readthedocs.io/en/lates
 * `src/` - all source code.
     * `core/` - base classes,
     * `datasources/` - routines for reading and preprocessing entries for training and testing,
-    * `models/` - machine learning model definitions,
+    * `models/` - model implementations,
     * `util/` - utility methods,
-    * `main.py` - the training script.
+    * `main.py` - the invoking script.
 
-Please refer to  `README.md` under these folders for detailed descriptions.
+Please refer to the `README.md` under each folder for detailed descriptions.
 
 ## Training the model
 
@@ -53,12 +53,115 @@ Simply `cd` into the `src/` directory and run
 ```
 python3 main.py -h
 ```
-Follow the instructions to invoke the trainer with appropriate arguments. Example arguments for SVM:
+Follow the instructions to invoke the trainer with appropriate arguments. Example arguments for LightGBM:
 ```
-python3 main.py -m SVM -d GloVe
+python3 main.py -m LightGBM -d GloVe
 ```
 
 ## Evaluation
 When the model has completed training, it will automatically perform a full evaluation on the test set and generate a submission file.
 
 The output submission files can be found in the folder `outputs/models/[model]/` as `kaggle_<timestamp>.csv`.
+
+## Training on Leonhard
+Reference: https://scicomp.ethz.ch/wiki/Leonhard_beta_testing#TensorFlow
+
+### Login to Leonhard
+1. Connect to ETH VPN.
+2. In your terminal: 
+`ssh [your_ETH_alias]@login.leonhard.ethz.ch`
+
+### Set up the environment
+1. Load the python+tensorflow_gpu module: 
+`module load python_gpu/3.6.4`
+2. Clone the git repo:
+    ```bash
+    $ cd ~
+    $ git clone https://github.com/Xivid/cil-text-classification-2018
+    ```
+3. Create a virtual environment and activate it
+    ```bash
+    $ cd ~
+    $ python -m venv envcil
+    $ source ~/envcil/bin/activate
+    ```
+4. Install necessary Python packages for the project, don't use `setup.py`, run `pip` directly:
+    ```bash
+    $ pip install coloredlogs numpy scipy sklearn gensim lightgbm tensorflow-gpu
+    ```
+5. Download the dataset
+    ``` bash
+    $ cd ~/cil-text-classification-2018/data
+    $ ./get_dataset.sh
+    ```
+6. Test the environment in python:
+    ```
+    $ python
+    # in python console
+    >>> import tensorflow
+    ```
+If it reports an error: `libcuda.so.1... No such file or directory`, then it's done (it means you have installed tensorflow-gpu version, but it cannot be run at the login node, which doesn't matter as we are not going to run the code at the login node).
+
+### Quick test using Batch interactive job
+Before really submitting the job and waiting for hours, you can run a quick test using batch interactive job. (Can be skipped because the queuing can be very slow)
+
+```
+$ cd ~/cil-text-classification-2018/src
+$ bsub -I -n 2 -W 4:00 -R "rusage[mem=8192, ngpus_excl_p=1]" python trainRNN.py
+```
+
+`-I` means you want to see the output interactively. `-n 6` means request 2 CPU cores, `-W 4:00` means the job is expected to run within 4 hours (after this amount of time it will be terminated by the system), `mem=8192` means request 8192MiB RAM for each CPU core (which means requesting 48GiB in total), `ngpus_excl_p=1` means request 1 GPU. `python trainRNN.py` is the command you want to run.
+
+### Run the experiment on GPU nodes
+1. Submit the job
+```shell
+$ cd ~/cil-text-classification-2018/src
+bsub -n 6 -W 10:00 -N -R "rusage[mem=8192, ngpus_excl_p=1]" python trainRNN.py
+```
+The `-N` tells the batch system to send you an email when the job finishes.
+2. Check the queue
+After the job is submitted, you need to wait for some time before it actually get to run. You can check the ID and status of the job using `bjobs`, or details with `bbjobs`. 
+You can also kill the job using `bkill [job_id]`.
+3. Check the output
+After the running has finished, you can find in the working directory an output file "lsf***" containing the standard outputs and running information of the job. I've not yet figured out how to see the print() output during the running process. 
+The submission file should be saved to the path specified in the code.
+
+### Monitor the output
+When the job is running on Leonhard computing nodes, you cannot see the standard output (such as those by print()), because the program is not running on your login node. 
+
+The simplest way to see the output is, first to modify your code somehow to make it output to a file instead of the standard output. Then, use `tail -f yourlog.txt` to show its contents, the `-f` option enables it to keep showing the latest content of your log file.
+
+### Watch the training process with TensorBoard
+1. Deactivate the environment and load the CPU version of TensorFlow and Python:
+    ```
+    $ deactivate
+    $ module load python_cpu/3.6.4
+    ```
+2. Launch tensorboard with a random port (I suggest some random number in 10000~30000 to avoid conflict, don't use the number in this example! It's very likely to conflict if we all use the same port.)
+    ```
+    $ tensorboard --logdir=[path_to_log_dir] --port=23333
+    ```
+    For example, for the RNN model, the path to log dir should be `output/models/RNN/`.
+3. Forward the serving port to a local port
+Find the hostname and port of TensorBoard in the output of the last command: something like `TensorBoard 1.7.0 at http://lo-login-02:23333 (Press CTRL+C to quit)`, then the hostname and port is `lo-login-02:23333`.
+Forward it to a local port, say, 23456 (notice the format, `:localport:remotehost:remoteport`):
+    ```
+    $ ssh -N -f -L :23456:lo-login-02:23333 [your_ETH_alias]@login.leonhard.ethz.ch
+    ```
+4. Visit `http://localhost:23456` to see TensorBoard.
+
+### Download the submissions to your local computer
+You can use `scp` to download all csv files:
+
+```
+$ mkdir ~/submissions
+$ scp zhiyang@login.leonhard.ethz.ch:"~/cil-text-classification-2018/output/models/RNN/*.csv" ~/submissions
+```
+Then find the files at your local `~/submissions` folder.
+
+## Authors
+CIL Team: Satisfaction
+
+Yi-Lu Chen, Zhifei Yang, Xiaotang Du, Ghazal Hakimifard
+
+D-INFK, ETH Zurich

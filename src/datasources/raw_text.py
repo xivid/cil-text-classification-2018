@@ -7,12 +7,11 @@ logger = logging.getLogger("RawText")
 
 class RawText(BaseDataSource):
     max_tok_count = 0
+    embedding_src = ""
 
     """
-    Word occurrence matrix
-    Each row represents a tweet, each column represents a word in the whole corpus.
-    X[i][j] is the times by which the word j occurs in the tweet i.
-    Uses sparse matrix to significantly reduce memory usage.
+    Raw Text
+    Returns raw text lines with labels.
     """
     def process(self, pos_src, neg_src, test_src):
         logger.info("Loading training data")

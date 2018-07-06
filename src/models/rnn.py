@@ -45,7 +45,7 @@ class RNN(BaseModel):
         def batch_gen(X, Y, batch_size, n_epochs, embedding, max_tok):
             n_sample = len(X)
             batches_per_epoch = int(np.ceil(n_sample/batch_size))
-            printl("[batch_gen] n_sample: {}, n_epochs: {} batches_per_epoch: {}".format(n_sample, n_epochs, batches_per_epoch))
+            logger.info("[batch_gen] n_sample: {}, n_epochs: {} batches_per_epoch: {}".format(n_sample, n_epochs, batches_per_epoch))
             for epoch in range(n_epochs):
                 shuffled_idx = np.random.permutation(np.arange(n_sample))
                 shuffled_X = [X[i] for i in shuffled_idx]
@@ -102,7 +102,7 @@ class RNN(BaseModel):
         checkpoint_every_step = 2000
 
         # Split into training and validation
-        printl("Splitting dataset into training and validation...")
+        logger.info("Splitting dataset into training and validation...")
         shuffled_idx = np.random.permutation(np.arange(len(X)))
         shuffled_X = [X[i] for i in shuffled_idx]
         shuffled_Y = Y[shuffled_idx]
@@ -113,7 +113,7 @@ class RNN(BaseModel):
         train_Y = shuffled_Y[val_samples:]
 
         # RNN
-        printl("Building model...")
+        logger.info("Building model...")
         session_conf = tf.ConfigProto(
                                       allow_soft_placement=True,
                                       log_device_placement=False)
@@ -163,7 +163,7 @@ class RNN(BaseModel):
         saver = tf.train.Saver(tf.global_variables())
 
         # Initialize all variables
-        printl("Initializing model variables...")
+        logger.info("Initializing model variables...")
         sess.run(tf.global_variables_initializer())
 
         def train_step(x_batch, y_batch, seq_len):
@@ -209,8 +209,8 @@ class RNN(BaseModel):
                                    val_std_acc: std_accuracy, val_avg_loss: average_loss})
             val_summary_writer.add_summary(val_summary, current_step)
             time_str = datetime.datetime.now().isoformat()
-            printl("{}: Evaluation report at step {}:".format(time_str, current_step))
-            printl("\tloss {:g}\n\tacc {:g} (stddev {:g})\n"
+            logger.info("{}: Evaluation report at step {}:".format(time_str, current_step))
+            logger.info("\tloss {:g}\n\tacc {:g} (stddev {:g})\n"
                    "\t(Tested on the full test set)\n"
                    .format(average_loss, average_accuracy, std_accuracy))
             return average_accuracy
@@ -238,7 +238,7 @@ class RNN(BaseModel):
         batches = batch_gen(train_X, train_Y, batch_size, n_epochs, embedding, max_tok_count)
 
         # Training
-        printl("Training started")
+        logger.info("Training started")
         current_step = None
         try:
             lcum = 0
@@ -252,20 +252,20 @@ class RNN(BaseModel):
                 
                 if current_step % output_every_step == 0:
                     time_str = datetime.datetime.now().isoformat()
-                    printl("{}: step {}, loss {:g}, acc {:g}".format(time_str, current_step, lcum / output_every_step, acum / output_every_step))
+                    logger.info("{}: step {}, loss {:g}, acc {:g}".format(time_str, current_step, lcum / output_every_step, acum / output_every_step))
                     lcum = 0
                     acum = 0
                 if current_step % eval_every_step == 0:
-                    printl("\nEvaluating...")
+                    logger.info("\nEvaluating...")
                     eval_start_ms = int(time.time() * 1000)
                     current_accuracy = evaluate_model(current_step)
                     eval_time_ms = int(time.time() * 1000) - eval_start_ms
-                    printl("Evaluation performed in {0}ms.".format(eval_time_ms))
+                    logger.info("Evaluation performed in {0}ms.".format(eval_time_ms))
                     if current_accuracy > best_accuracy:
                         # Evaluate test data
                         best_accuracy = current_accuracy
                         submission_file = out_dir + "kaggle_%s_accu%f.csv" % (datetime.datetime.now().strftime("%Y%m%d%H%M%S"), best_accuracy)
-                        printl("New best accuracy, generating submission file: %s" % submission_file)
+                        logger.info("New best accuracy, generating submission file: %s" % submission_file)
                         with open(submission_file, "w+") as f:
                             f.write("Id,Prediction\n")
                             testX_t = [testX[i:i+val_split] for i in range(0, len(testX), val_split)]
@@ -280,34 +280,34 @@ class RNN(BaseModel):
                                 for p in predictions:
                                     f.write("{},{}\n".format(sample_no, (1 if p == 0 else -1)))
                                     sample_no += 1
-                        printl("saved to %s" % submission_file)
+                        logger.info("saved to %s" % submission_file)
             
                 if current_step % checkpoint_every_step == 0:
-                    printl("Save model parameters...")
+                    logger.info("Save model parameters...")
                     path = saver.save(sess, checkpoint_prefix, global_step=current_step)
-                    printl("Saved model checkpoint to {}\n".format(path))
+                    logger.info("Saved model checkpoint to {}\n".format(path))
 
         if current_step is None:
-            printl("No steps performed.")
+            logger.info("No steps performed.")
             else:
-                printl("\n\nFinished all batches. Performing final evaluations.")
+                logger.info("\n\nFinished all batches. Performing final evaluations.")
 
-        printl("Performing final evaluation...")
+        logger.info("Performing final evaluation...")
         evaluate_model(current_step)
 
-        printl("Performing final checkpoint...")
+        logger.info("Performing final checkpoint...")
         path = saver.save(sess, checkpoint_prefix, global_step=current_step)
-        printl("Saved model checkpoint to {}\n".format(path))
+        logger.info("Saved model checkpoint to {}\n".format(path))
 
 
         except KeyboardInterrupt:
             if current_step is None:
-                printl("No checkpointing to do.")
+                logger.info("No checkpointing to do.")
             else:
-                printl("Training interrupted. Performing final checkpoint.")
-                printl("Press C-c again to forcefully interrupt this.")
+                logger.info("Training interrupted. Performing final checkpoint.")
+                logger.info("Press C-c again to forcefully interrupt this.")
                 path = saver.save(sess, checkpoint_prefix, global_step=current_step)
-                printl("Saved model checkpoint to {}\n".format(path))
+                logger.info("Saved model checkpoint to {}\n".format(path))
 
 
     def predict(self, X):

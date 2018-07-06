@@ -1,5 +1,5 @@
 from core import BaseDataSource
-from gensim.models import Word2Vec, KeyedVectors
+from gensim.models import Word2Vec as Word2VecModel, KeyedVectors
 from utils.feature_extraction import average_vector
 from pathlib import Path
 import logging
@@ -8,15 +8,14 @@ import os
 logger = logging.getLogger("Word2Vec")
 output_dir = "../output/datasources/Word2Vec/"
 
-class Word2VecEmbedding(BaseDataSource):
+class Word2Vec(BaseDataSource):
     """
-    This Word2VecEmbedding class train the word embeddings in preprocess()->train_we()
+    This Word2Vec class train the word embeddings in preprocess()->train_we()
     (and output the intermediate results to ../../output/datasources/GloVe/),
-    and yield (the feature vector and the corresponding class label of) one sample on
-    each call to yield_one_sample(), or expose all samples with self.X, self.Y.
+    and expose (the feature vector and the corresponding class label of) all samples with self.X, self.Y.
     """
 
-    def preprocess(self, pos_src, neg_src, test_src, embedding_src=""):
+    def process(self, pos_src, neg_src, test_src, embedding_src=""):
         if embedding_src != "":
             # load pre-trained embeddings
             logger.info("Loading external embeddings")
@@ -46,7 +45,7 @@ class Word2VecEmbedding(BaseDataSource):
             embedding=word_vectors)
 
     def train_we(self, pos_src, neg_src, save_path):
-        from utils import ensure_dir
+        from utils.io import ensure_dir
         ensure_dir(save_path)
 
         sentences = []
@@ -61,7 +60,7 @@ class Word2VecEmbedding(BaseDataSource):
 
         logger.info("Training word2vec")
         feature_dimensions = 300
-        model = Word2Vec(sentences, size=feature_dimensions, iter=20)
+        model = Word2VecModel(sentences, size=feature_dimensions, iter=20)
         model.wv.save_word2vec_format(save_path)
 
         return model

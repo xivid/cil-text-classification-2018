@@ -1,11 +1,10 @@
-"""Model definitions (one class per file) to define NN architectures."""
-from .bayes import NaiveBayes
-from .logistic import LR
+"""Model definitions (one class per file) to define models."""
+from .naive_bayes import NaiveBayes
+from .lr import LR
 from .svm import SVM
 from .lightgbm import LightGBM
-#from .lstm import LSTMModel
 
-__all__ = ('NaiveBayes', 'LR', 'SVM', 'LightGBM')
+__all__ = ('NaiveBayes', 'LR', 'LightGBM')
 
 
 def get_model(name):
@@ -13,11 +12,7 @@ def get_model(name):
         return NaiveBayes
     elif name == "LR":
         return LR
-    elif name == "SVM":
-        return SVM
     elif name == 'LightGBM':
         return LightGBM
-    #elif name == 'LSTM':
-    #    return LSTMModel
     else:
         raise NotImplementedError("No model called \"%s\"!" % name)

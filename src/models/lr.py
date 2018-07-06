@@ -5,11 +5,10 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 import logging
 
-logger = logging.getLogger("Logistic Regression")
+logger = logging.getLogger("LogisticRegression")
 
 class LR(BaseModel):
-    def __init__(self, data_source, save_path=None, penalty=1.0, valid_size=0.33):
-        BaseModel.__init__(self, data_source, save_path)
+    def init(self, penalty=1.0, valid_size=0.33):
         self.valid_size = valid_size
         self.model = LogisticRegression(C=penalty)
     

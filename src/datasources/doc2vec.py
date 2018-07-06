@@ -12,14 +12,15 @@ import numpy as np
 logger = logging.getLogger("Doc2Vec")
 output_dir = "../output/datasources/Doc2Vec/"
 
-class Doc2VecEmbedding(BaseDataSource):
+
+class Doc2Vec(BaseDataSource):
     """
-    This Doc2VecEmbedding class train the document embeddings in preprocess()->train_we()
+    This Doc2Vec class train the document embeddings in preprocess()->train_we()
     (and output the intermediate results to ../../output/datasources/Doc2Vec/),
-    and yield (the feature vector and the corresponding class label of) one sample on
-    each call to yield_one_sample(), or expose all samples with self.X, self.Y.
+    and expose (the feature vector and the corresponding class label of) all samples with self.X, self.Y.
     """
-    def preprocess(self, pos_src, neg_src, test_src, embedding_src=""):
+
+    def process(self, pos_src, neg_src, test_src, embedding_src=""):
         logger.info("preprocessing")
         if embedding_src != "":
             # load pre-trained embeddings
@@ -70,7 +71,7 @@ class Doc2VecEmbedding(BaseDataSource):
         # print(self.testX)
         
     def train_we(self, pos_src, neg_src, save_path):
-        from utils import ensure_dir
+        from utils.io import ensure_dir
         ensure_dir(output_dir)
         logger.info("building corpus")
 

@@ -4,9 +4,9 @@ class BaseDataSource(object):
         self.X = None
         self.Y = None
         self.testX = None
-        self.preprocess(**kwargs)
+        self.process(**kwargs)
 
-    def preprocess(self, **kwargs):
+    def process(self, **kwargs):
         """
         preprocess the data source file, store feature vectors in self.X, self.testX and labels in self.Y
         """

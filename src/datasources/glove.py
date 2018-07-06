@@ -13,12 +13,12 @@ output_dir = "../output/datasources/GloVe/"
 
 class GloVe(BaseDataSource):
     """
-    This GloVe class train the word embeddings in preprocess()->train_we() (and output the intermediate results to ../../output/datasources/GloVe/),
-    and yield (the feature vector and the corresponding class label of) one sample on each call to yield_one_sample(),
-    or expose all samples with self.X, self.Y.
+    This GloVe class can load pre-trained embeddings
+    or train the word embeddings in preprocess()->train_we() and save to `../../output/datasources/GloVe/`.
+    It exposes (the feature vector and the corresponding class label of) all samples with self.X, self.Y, self.testX.
     """
 
-    def preprocess(self, pos_src, neg_src, test_src, embedding_src=""):
+    def process(self, pos_src, neg_src, test_src, embedding_src=""):
         if embedding_src != "":
             # load pre-trained embeddings
             logger.info("Loading external embeddings")
@@ -41,7 +41,7 @@ class GloVe(BaseDataSource):
 
     def train_we(self, pos_src, neg_src, save_path):
         import subprocess
-        from utils import ensure_dir
+        from utils.io import ensure_dir
         ensure_dir(output_dir)
 
         vocab_path = output_dir + "vocab.txt"

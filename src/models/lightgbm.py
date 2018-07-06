@@ -9,8 +9,7 @@ logger = logging.getLogger("LightGBM")
 
 
 class LightGBM(BaseModel):
-    def __init__(self, data_source, save_path=None, valid_size=0.20):
-        BaseModel.__init__(self, data_source, save_path)
+    def init(self, valid_size=0.20):
         self.valid_size = valid_size
         self.model = None
 

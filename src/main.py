@@ -12,7 +12,6 @@ logger = logging.getLogger("Main")
 pos_default = "../data/twitter-datasets/train_pos.txt"
 neg_default = "../data/twitter-datasets/train_neg.txt"
 test_default = "../data/twitter-datasets/test_data_stripped.txt"
-# embedding_default = "../data/embeddings.npz"
 
 if __name__ == "__main__":
 
@@ -57,7 +56,7 @@ if __name__ == "__main__":
         os.chdir("src")
 
     # Pre-process data source
-    logger.info("Pre-processing data source " + datasource_name)
+    logger.info("Preparing data source: " + datasource_name)
     if embedding_src != "":  # pre-trained embeddings provided
         data_source = datasources.get_datasource(datasource_name)(
             pos_src=pos_src,
@@ -73,14 +72,14 @@ if __name__ == "__main__":
         )
 
     # Train the model
-    logger.info("Training " + model_name)
+    logger.info("Training model: " + model_name)
     model = models.get_model(model_name)(
         data_source=data_source
     )
     model.train()
 
     # Output training and validation error
-    logger.info("Training finished with accuracy %f, validation accuracy %f" % (model.training_accuracy, model.validation_accuracy))
+    logger.info("Training finished with training accuracy %f, validation accuracy %f" % (model.training_accuracy, model.validation_accuracy))
 
     # Evaluate for Kaggle submission
     logger.info("Evaluating for kaggle submission")

@@ -53,9 +53,9 @@ Simply `cd` into the `src/` directory and run
 ```
 python3 main.py -h
 ```
-Follow the instructions to invoke the trainer with appropriate arguments. Example arguments for LightGBM:
+Follow the instructions to invoke the trainer with appropriate arguments. To train our best performing model:
 ```
-python3 main.py -m LightGBM -d GloVe
+python3 main.py -m ELMoMultiRNN -d RawText
 ```
 
 ## Evaluation

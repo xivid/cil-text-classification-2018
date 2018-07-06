@@ -9,8 +9,8 @@ import datetime
 
 logger = logging.getLogger("Main")
 
-pos_default = "../data/twitter-datasets/train_pos.txt"
-neg_default = "../data/twitter-datasets/train_neg.txt"
+pos_default = "../data/twitter-datasets/train_pos_full.txt"
+neg_default = "../data/twitter-datasets/train_neg_full.txt"
 test_default = "../data/twitter-datasets/test_data_stripped.txt"
 
 if __name__ == "__main__":

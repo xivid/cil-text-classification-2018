@@ -25,6 +25,9 @@ class ElmoRNN(BaseModel):
             exit()
 
     def train(self):
+        logger.info("Training ELMoRNN model...")
+        out_dir = self.output_dir
+
         logger.info("Loading ELMO module...")
         elmo = hub.Module("https://tfhub.dev/google/elmo/2", trainable=True)
 
@@ -269,7 +272,7 @@ class ElmoRNN(BaseModel):
                     for p in predictions:
                         self.predictions.append(p)
                         f.write("{},{}\n".format(sample_no, (1 if p == 0 else -1)))
-                            sample_no += 1
+                        sample_no += 1
             logger.info("Final submission file saved to " + submission_file)
 
         logger.info("Generating batches...")
@@ -304,23 +307,7 @@ class ElmoRNN(BaseModel):
                         best_accuracy = current_accuracy
                         submission_file = "../output/models/RNN/kaggle_%s_accu%f.csv" % (datetime.datetime.now().strftime("%Y%m%d%H%M%S"), best_accuracy)
                         logger.info("New best accuracy, generating submission file: %s" % submission_file)
-                        with open(submission_file, "w+") as f:
-                            f.write("Id,Prediction\n")
-                            testX_t = [testX[i:i+val_split] for i in range(0, len(testX), val_split)]
-                            sample_no = 1
-                            for testBatch in testX_t:
-                                ret, seq_len = text2array(testBatch)
-                                x_vecs = text2vecs(testBatch, max_tok_count, embedding)
-                                feed_dict = {
-                                        model.X: ret,
-                                        model.X_vecs: x_vecs,
-                                        model.seq_len: seq_len
-                                }
-                                predictions = sess.run(model.class_prediction, feed_dict)
-                                for p in predictions:
-                                    f.write("{},{}\n".format(sample_no, (1 if p == 0 else -1)))
-                                    sample_no += 1
-                        logger.info("saved to %s" % submission_file)
+                        predict_test(submission_file)
 
                 if current_step % checkpoint_every_step == 0:
                     logger.info("Save model parameters...")
@@ -339,23 +326,6 @@ class ElmoRNN(BaseModel):
             path = saver.save(sess, checkpoint_prefix, global_step=current_step)
             logger.info("Saved model checkpoint to {}\n".format(path))
 
-            # Evaluate test data
-            with open("../output/submission_lstm.csv", "w+") as f:
-                testX = [testX[i:i+val_split] for i in range(0, len(testX), val_split)]
-                sample_no = 1
-                for testBatch in testX:
-                    ret, seq_len = text2array(testBatch)
-                    x_vecs = text2vecs(testBatch, max_tok_count, embedding)
-                    feed_dict = {
-                            model.X: ret,
-                            model.X_vecs: x_vecs,
-                            model.seq_len: seq_len
-                    }
-                    predictions = sess.run(model.class_prediction, feed_dict)
-                    for p in predictions:
-                        f.write("{},{}\n".format(sample_no, (1 if p == 0 else -1)))
-                        sample_no += 1
-
         except KeyboardInterrupt:
             if current_step is None:
                 logger.info("No checkpointing to do.")
@@ -364,23 +334,6 @@ class ElmoRNN(BaseModel):
                 logger.info("Press C-c again to forcefully interrupt this.")
                 path = saver.save(sess, checkpoint_prefix, global_step=current_step)
                 logger.info("Saved model checkpoint to {}\n".format(path))
-
-            with open("../output/submission_lstm.csv", "w+") as f:
-                f.write("Id,Predictions")
-                testX = [testX[i:i+val_split] for i in range(0, len(testX), val_split)]
-                sample_no = 1
-                for testBatch in testX:
-                    ret, seq_len = text2array(testBatch)
-                    x_vecs = text2vecs(testBatch, max_tok_count, embedding)
-                    feed_dict = {
-                            model.X: ret,
-                            model.X_vecs: x_vecs,
-                            model.seq_len: seq_len
-                    }
-                    predictions = sess.run(model.class_prediction, feed_dict)
-                    for p in predictions:
-                        f.write("{},{}\n".format(sample_no, (1 if p == 0 else -1)))
-                        sample_no += 1
 
     def predict(self, X):
         # prediciton already done during training, just return the result

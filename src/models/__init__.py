@@ -9,8 +9,11 @@ from .elmo_GRU import ELMoGRU
 from .multi_biLSTM import MultiBiLSTM
 from .elmo_biLSTM import ELMoBiLSTM
 from .rnn import RNN
+from .gru import GRU
+from .elmo_RNN import ElmoRNN
 
-__all__ = ('NaiveBayes', 'LR', 'SVM', 'LightGBM', 'ELMoMultiRNN', 'BiLSTM', 'ELMoGRU', 'MultiBiLSTM', 'ELMoBiLSTM', 'RNN')
+__all__ = ('NaiveBayes', 'LR', 'SVM', 'LightGBM',
+           'ELMoMultiRNN', 'BiLSTM', 'ELMoGRU', 'MultiBiLSTM', 'ELMoBiLSTM', 'RNN', 'GRU', 'ElmoRNN')
 
 
 def get_model(name):
@@ -34,5 +37,9 @@ def get_model(name):
         return ELMoBiLSTM
     elif name == 'RNN':
         return RNN
+    elif name == 'GRU':
+        return GRU
+    elif name == 'ElmoRNN':
+        return ElmoRNN
     else:
         raise NotImplementedError("No model named \"%s\"!" % name)

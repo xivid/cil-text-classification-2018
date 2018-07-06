@@ -1,6 +1,8 @@
 # CIL Text Classification Project
 
-This is the codebase for the team `Satisfaction` on Project 2: Twitter Sentiment Classification in the course Computational Intelligence Lab of ETH Zurich in Spring 2018. We achieved the first place on the Kaggle competition with ELMo (Deep contextualized word representations) + Multi-layer RNN + ensemble method. 
+This is the codebase for the team `Satisfaction` on Project 2: Twitter Sentiment Classification in the course Computational Intelligence Lab of ETH Zurich in Spring 2018. 
+
+With ELMo (Deep contextualized word representations) + Multi-layer RNN + ensemble method, we achieved a classification accuracy of 0.88620, winning the first place on the Kaggle competition (private leaderboard). After the competition deadline, with more tunning we achieved a even higher accuracy of 0.88700 (private) or 0.89180 (public), setting new records for both leaderboards.
 
 Problem statement: Given a tweet from which a smiley (`:)` or `:(`) has been removed, determine whether it used to contain a positive or a negative smiley.
 

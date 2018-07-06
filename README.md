@@ -126,7 +126,7 @@ You can also kill the job using `bkill [job_id]`.
 After the running has finished, you can find in the working directory an output file "lsf***" containing the standard outputs and running information of the job. I've not yet figured out how to see the print() output during the running process. 
 The submission file should be saved to the path specified in the code.
 
-### Monitor the output
+### Monitor the output
 When the job is running on Leonhard computing nodes, you cannot see the standard output (such as those by print()), because the program is not running on your login node. 
 
 The simplest way to see the output is, first to modify your code somehow to make it output to a file instead of the standard output. Then, use `tail -f yourlog.txt` to show its contents, the `-f` option enables it to keep showing the latest content of your log file.

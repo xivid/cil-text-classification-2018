@@ -1,8 +1,8 @@
 # CIL Text Classification Project
 
-Problem: Given a tweet from which a smiley (`:)` or `:(`) has been removed
+This is the codebase for the team `Satisfaction` on Project 2: Twitter Sentiment Classification in the course Computational Intelligence Lab of ETH Zurich in Spring 2018. We achieved the first place on the Kaggle competition with ELMo (Deep contextualized word representations) + Multi-layer RNN + ensemble method. 
 
-Goal: Determine whether it used to contain a positive or a negative smiley 
+Problem statement: Given a tweet from which a smiley (`:)` or `:(`) has been removed, determine whether it used to contain a positive or a negative smiley.
 
 ## Setup
 
@@ -155,7 +155,7 @@ You can use `scp` to download all csv files:
 
 ```
 $ mkdir ~/submissions
-$ scp zhiyang@login.leonhard.ethz.ch:"~/cil-text-classification-2018/output/models/RNN/*.csv" ~/submissions
+$ scp [your_ETH_alias]@login.leonhard.ethz.ch:"~/cil-text-classification-2018/output/models/RNN/*.csv" ~/submissions
 ```
 Then find the files at your local `~/submissions` folder.
 

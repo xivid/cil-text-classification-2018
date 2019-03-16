@@ -1,6 +1,6 @@
 # Text Sentiment Classification
 
-This is the codebase for the team `Satisfaction` on Project 2: Twitter Sentiment Classification in the course Computational Intelligence Lab of ETH Zurich in Spring 2018. 
+This is the codebase for the team `Satisfaction` on Project 2: Twitter Sentiment Classification in the course Computational Intelligence Lab of ETH Zurich in Spring 2018. The project got a grade of 6.0 out of 6.0. A helpful cheatsheet for the CIL exam can also be found [here](https://github.com/Xivid/eth-cil-exam-cheatsheet).
 
 With ELMo (Deep contextualized word representations) + Multi-layer RNN + ensemble method, we achieved a classification accuracy of 0.88620, winning the first place on the Kaggle competition (private leaderboard). After the competition deadline, with more tunning we achieved a even higher accuracy of 0.88700 (private) or 0.89180 (public), setting new records for both leaderboards.
 

@@ -1,4 +1,4 @@
-# CIL Text Classification Project
+# Text Sentiment Classification
 
 This is the codebase for the team `Satisfaction` on Project 2: Twitter Sentiment Classification in the course Computational Intelligence Lab of ETH Zurich in Spring 2018. 
 
